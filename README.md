@@ -11,13 +11,13 @@ Each power-up can be switched on or off with a toggle on the main menu. In a gam
 
 | Power-up | Effect | When |
 |---|---|---|
-| **Peek (Nhìn Lén)** | Shows three random cards from the opponent you pick. They stay shown next to that opponent's seat until played. | Any time |
-| **Suit Up** | Select one card to raise its suit one level (♠ → ♣ → ♦ → ♥). This can give you a duplicate of a card an opponent holds. | Your turn |
+| **Suit Up** | Select one card to turn it into the ♥ of the same rank, the highest suit. This can give you a duplicate of a card an opponent holds. | Your turn |
+| **Wild Card** | Select one card to make it wild; it is marked **WILD** in your hand. When you play it, it becomes whichever card makes your selection the strongest legal play. For example, 5♠ 6♠ + wild plays as a 5-6-7♥ straight, and J♠ + wild plays as a pair of Jacks. A wild card played alone becomes the strongest single that beats the table. The status line shows what the wild card will become before you press Play. | Your turn |
 | **Lucky Draw** | Select one card to discard. You draw a random card from the dead pile (undealt cards, cleared tricks, and discards). | Your turn, once the dead pile isn't empty |
 | **Lead Steal** | Arms the power-up. You lead the next new round, even if someone else won the round before it. | Any time |
 | **Hand Lock** | The opponent you pick is locked out for the rest of the round. If they win that round, the lead passes to the next player instead of them. | Your turn |
 
-Suit Up and Lucky Draw can't be used on the card you're required to open the game with.
+Suit Up, Lucky Draw and Wild Card can't be used on the card you're required to open the game with, or on a card that is already wild.
 
 ## Running
 1. Install Godot 4.3 or later (standard build, not .NET).

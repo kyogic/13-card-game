@@ -14,8 +14,8 @@ const IDLE_COLOR := Color(0.9, 0.95, 0.9)
 const MAX_POWERUP_USES := 2
 ## key -> [button name, description]. Each power-up can be used once per game.
 const POWERUPS := {
-	"peek": ["Peek (Nhìn Lén)", "See three random cards in an opponent's hand."],
-	"suit_up": ["Suit Up", "Raise one card's suit a level (Spades -> Clubs -> Diamonds -> Hearts)."],
+	"suit_up": ["Suit Up", "Turn one card into the Heart of the same rank (the highest suit)."],
+	"wild": ["Wild Card", "Make one card wild: it becomes whatever card completes your play."],
 	"lucky_draw": ["Lucky Draw", "Discard one card and draw a random one from the dead pile."],
 	"lead_steal": ["Lead Steal", "Take the lead at the start of the next round, whoever won it."],
 	"hand_lock": ["Hand Lock", "Lock an opponent out for the rest of this round."],
@@ -42,8 +42,7 @@ var powerup_uses_left := MAX_POWERUP_USES
 var dead_pile: Array = []      # undealt cards + cleared tricks + discards
 var locked: Array = []         # locked[p] == true -> Hand Lock until the round resets
 var lead_steal_armed := false
-var peek_player := -1
-var peek_cards: Array = []
+var wild_card := -1            # value of the card in your hand made wild, or -1
 var pending_target_power := ""
 var flash_text := ""           # one-shot status message shown on the next refresh
 var game_start_ms := 0
@@ -282,13 +281,10 @@ func _build_seats() -> void:
 		var backs := HBoxContainer.new()
 		backs.alignment = BoxContainer.ALIGNMENT_CENTER
 		backs.add_theme_constant_override("separation", -26)
-		var peek_row := HBoxContainer.new()
-		peek_row.alignment = BoxContainer.ALIGNMENT_CENTER
 		box.add_child(name_label)
 		if p != HUMAN:
 			box.add_child(backs)
 		box.add_child(info_label)
-		box.add_child(peek_row)
 		table.add_child(box)
 		box.set_anchors_and_offsets_preset(presets[p], Control.PRESET_MODE_KEEP_SIZE)
 		match presets[p]:
@@ -302,8 +298,7 @@ func _build_seats() -> void:
 				# Your seat is just a name tag at the bottom-left above the hand.
 				box.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 				_set_offsets(box, 20, 220, -230, -170)
-		seats.append({"box": box, "name_label": name_label, "backs": backs, "info_label": info_label,
-			"peek_row": peek_row})
+		seats.append({"box": box, "name_label": name_label, "backs": backs, "info_label": info_label})
 
 
 func _set_offsets(c: Control, l: float, r: float, t: float, b: float) -> void:
@@ -383,8 +378,7 @@ func _start_game(players: int) -> void:
 	powerup_used = {}
 	powerup_uses_left = MAX_POWERUP_USES
 	lead_steal_armed = false
-	peek_player = -1
-	peek_cards = []
+	wild_card = -1
 	flash_text = ""
 	finish_order = []
 	last_combo = {}
@@ -427,9 +421,11 @@ func _start_turn() -> void:
 		_do_play(current, cards)
 
 
-func _do_play(p: int, cards: Array) -> void:
+## `from_hand` are the cards leaving the hand when they differ from what is played
+## (a wild card is played as the card it stands in for).
+func _do_play(p: int, cards: Array, from_hand: Array = []) -> void:
 	var combo := Rules.analyze(cards)
-	for c in cards:
+	for c in (from_hand if not from_hand.is_empty() else cards):
 		hands[p].erase(c)
 	cards = cards.duplicate()
 	cards.sort()
@@ -558,7 +554,12 @@ func _on_play_pressed() -> void:
 	var cards := _selected_cards()
 	if current != HUMAN or _play_error(cards) != "":
 		return
-	_do_play(HUMAN, cards)
+	var played := _resolve_wild(cards)
+	if cards.has(wild_card):
+		var stand_in: int = played[cards.find(wild_card)]
+		_log("Your wild card was played as the %s." % Rules.card_name(stand_in))
+		wild_card = -1
+	_do_play(HUMAN, played, cards)
 
 
 func _on_pass_pressed() -> void:
@@ -590,9 +591,34 @@ func _clear_selection() -> void:
 
 
 ## Returns why the selection can't be played, or "" if it can.
-func _play_error(cards: Array) -> String:
-	if cards.is_empty():
+## Replaces the wild card (if selected) with the strongest card that makes the
+## selection a legal play. Keeps positions so callers can find the stand-in.
+func _resolve_wild(cards: Array) -> Array:
+	var idx := cards.find(wild_card)
+	if idx < 0:
+		return cards
+	var best := cards
+	var best_score := -1
+	for v in 52:
+		var trial := cards.duplicate()
+		trial[idx] = v
+		var combo := Rules.analyze(trial)
+		if not Rules.can_beat(combo, last_combo):
+			continue
+		if required_card >= 0 and not trial.has(required_card):
+			continue
+		var bomb: bool = combo.type == Rules.Type.QUAD or combo.type == Rules.Type.DOUBLE_SEQ
+		var score: int = combo.top + (100 if bomb else 0)
+		if score > best_score:
+			best_score = score
+			best = trial
+	return best
+
+
+func _play_error(selected: Array) -> String:
+	if selected.is_empty():
 		return "Select cards to play."
+	var cards := _resolve_wild(selected)
 	var combo := Rules.analyze(cards)
 	if not Rules.is_valid(combo):
 		return "That isn't a valid combination."
@@ -614,6 +640,7 @@ func _rebuild_hand() -> void:
 	for c in hands[HUMAN]:
 		var v := CardView.new()
 		v.setup(c, true, true)
+		v.wild = c == wild_card
 		v.clicked.connect(_on_card_clicked)
 		hand_area.add_child(v)
 		hand_views.append(v)
@@ -655,22 +682,6 @@ func _refresh_ui() -> void:
 				var back := CardView.new()
 				back.setup(-1, false, false, 0.45)
 				backs.add_child(back)
-		var peek_row: HBoxContainer = seat.peek_row
-		for child in peek_row.get_children():
-			child.queue_free()
-		if p == peek_player:
-			var still_held := []
-			var hand_copy: Array = hands[p].duplicate()
-			for c in peek_cards:
-				if hand_copy.has(c):
-					hand_copy.erase(c)
-					still_held.append(c)
-			if not still_held.is_empty():
-				peek_row.add_child(_make_label("Peeked:", 14, TURN_COLOR))
-			for c in still_held:
-				var v := CardView.new()
-				v.setup(c, true, false, 0.6)
-				peek_row.add_child(v)
 
 	# Centre pile.
 	for child in pile_cards.get_children():
@@ -710,7 +721,11 @@ func _refresh_buttons() -> void:
 		elif err != "":
 			status_label.text = err
 		else:
-			status_label.text = "Ready: %s" % Rules.type_name(Rules.analyze(_selected_cards()))
+			var sel := _selected_cards()
+			var played := _resolve_wild(sel)
+			status_label.text = "Ready: %s" % Rules.type_name(Rules.analyze(played))
+			if sel.has(wild_card):
+				status_label.text += "  (wild = %s)" % Rules.card_name(played[sel.find(wild_card)])
 	_refresh_powerups()
 	if flash_text != "":
 		status_label.text = flash_text
@@ -762,9 +777,6 @@ func _powerup_block(key: String) -> String:
 	if not table.visible or overlay.visible or hands[HUMAN].is_empty():
 		return "unavailable"
 	match key:
-		"peek":
-			if _opponents_with_cards().is_empty():
-				return "no targets"
 		"lead_steal":
 			pass  # can be armed at any time; fires when the next round starts
 		"lucky_draw":
@@ -772,7 +784,7 @@ func _powerup_block(key: String) -> String:
 				return "your turn only"
 			if dead_pile.is_empty():
 				return "dead pile empty"
-		"suit_up":
+		"suit_up", "wild":
 			if current != HUMAN:
 				return "your turn only"
 		"hand_lock":
@@ -818,8 +830,8 @@ func _on_powerup_pressed(key: String) -> void:
 	if _powerup_block(key) != "":
 		return
 	match key:
-		"peek", "hand_lock":
-			var targets := _opponents_with_cards() if key == "peek" else _lockable_opponents()
+		"hand_lock":
+			var targets := _lockable_opponents()
 			if targets.size() == 1:
 				_apply_targeted_powerup(key, targets[0])
 				return
@@ -833,7 +845,7 @@ func _on_powerup_pressed(key: String) -> void:
 			lead_steal_armed = true
 			_log("You armed Lead Steal — you'll lead the next round.")
 			_refresh_ui()
-		"suit_up", "lucky_draw":
+		"suit_up", "lucky_draw", "wild":
 			_apply_card_powerup(key)
 
 
@@ -846,21 +858,14 @@ func _on_target_chosen(p: int) -> void:
 
 func _apply_targeted_powerup(key: String, p: int) -> void:
 	_consume_powerup(key)
-	if key == "peek":
-		var shown: Array = hands[p].duplicate()
-		shown.shuffle()
-		peek_player = p
-		peek_cards = shown.slice(0, 3)
-		peek_cards.sort()
-		_log("You peeked at %s's hand." % names[p])
-	else:
+	if key == "hand_lock":
 		locked[p] = true
 		passed[p] = true
 		_log("You Hand-Locked %s for the rest of this round." % names[p])
 	_refresh_ui()
 
 
-## Suit Up / Lucky Draw act on exactly one selected card.
+## Suit Up / Lucky Draw / Wild Card act on exactly one selected card.
 func _apply_card_powerup(key: String) -> void:
 	var sel := _selected_cards()
 	if sel.size() != 1:
@@ -872,13 +877,24 @@ func _apply_card_powerup(key: String) -> void:
 		flash_text = "The %s must be played to open the game." % Rules.card_name(card)
 		_refresh_buttons()
 		return
+	if card == wild_card:
+		flash_text = "That card is already wild."
+		_refresh_buttons()
+		return
+	if key == "wild":
+		_consume_powerup(key)
+		wild_card = card
+		_log("Wild Card: your %s is now wild." % Rules.card_name(card))
+		_rebuild_hand()
+		_refresh_ui()
+		return
 	var new_card: int
 	if key == "suit_up":
 		if Rules.suit(card) == 3:
-			flash_text = "Hearts is already the highest suit."
+			flash_text = "That card is already a Heart."
 			_refresh_buttons()
 			return
-		new_card = card + 1
+		new_card = Rules.rank(card) * 4 + 3
 		_log("Suit Up: your %s became the %s." % [Rules.card_name(card), Rules.card_name(new_card)])
 	else:
 		new_card = dead_pile.pop_at(randi() % dead_pile.size())

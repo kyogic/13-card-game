@@ -15,6 +15,10 @@ var selected := false:
 		selected = value
 		queue_redraw()
 var interactive := false
+var wild := false:
+	set(value):
+		wild = value
+		queue_redraw()
 
 
 func setup(p_card: int, p_face_up := true, p_interactive := false, scale_factor := 1.0) -> void:
@@ -51,8 +55,12 @@ func _draw() -> void:
 
 	box.bg_color = Color(1, 1, 0.97)
 	box.border_color = Color(1.0, 0.8, 0.1) if selected else Color(0.3, 0.3, 0.3)
-	if selected:
+	if wild and not selected:
+		box.border_color = Color(0.6, 0.2, 0.9)
+	if selected or wild:
 		box.set_border_width_all(4)
+	if wild:
+		box.bg_color = Color(0.93, 0.88, 1.0)
 	draw_style_box(box, rect)
 
 	var s := Rules.suit(card)
@@ -64,6 +72,9 @@ func _draw() -> void:
 	draw_string(font, Vector2(6 * k, 22 * k), label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
 	_draw_suit(s, Vector2(14 * k, 36 * k), 7 * k, color)
 	_draw_suit(s, size * 0.5 + Vector2(4 * k, 10 * k), 18 * k, color)
+	if wild:
+		draw_string(font, Vector2(0, size.y - 6 * k), "WILD", HORIZONTAL_ALIGNMENT_CENTER, size.x,
+			int(14 * k), Color(0.5, 0.1, 0.8))
 
 
 ## Suit pips built from primitives so no special font glyphs are required.
