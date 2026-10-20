@@ -10,6 +10,15 @@ var CPU_DELAY := 0.9
 const PLACE_NAMES := ["1st", "2nd", "3rd", "4th"]
 const TURN_COLOR := Color(1.0, 0.85, 0.2)
 const IDLE_COLOR := Color(0.9, 0.95, 0.9)
+const MAX_POWERUP_USES := 2
+## key -> [button name, description]. Each power-up can be used once per game.
+const POWERUPS := {
+	"peek": ["Peek (Nhìn Lén)", "See three random cards in an opponent's hand."],
+	"suit_up": ["Suit Up", "Raise one card's suit a level (Spades -> Clubs -> Diamonds -> Hearts)."],
+	"lucky_draw": ["Lucky Draw", "Discard one card and draw a random one from the dead pile."],
+	"lead_steal": ["Lead Steal", "Take the lead at the start of the next round, whoever won it."],
+	"hand_lock": ["Hand Lock", "Lock an opponent out for the rest of this round."],
+}
 
 # --- Game state -------------------------------------------------------------
 var num_players := 4
@@ -24,6 +33,18 @@ var last_player := -1
 var required_card := -1        # lowest dealt card; must be in the opening play
 var game_id := 0               # bumped on every new game to cancel pending CPU turns
 var log_lines: Array = []
+
+# --- Power-ups (human only) -------------------------------------------------
+var powerup_enabled := {}      # key -> bool, set by the main-menu toggles
+var powerup_used := {}         # key -> true once used this game
+var powerup_uses_left := MAX_POWERUP_USES
+var dead_pile: Array = []      # undealt cards + cleared tricks + discards
+var locked: Array = []         # locked[p] == true -> Hand Lock until the round resets
+var lead_steal_armed := false
+var peek_player := -1
+var peek_cards: Array = []
+var pending_target_power := ""
+var flash_text := ""           # one-shot status message shown on the next refresh
 
 # --- UI ---------------------------------------------------------------------
 var menu: Control
@@ -41,10 +62,15 @@ var hint_button: Button
 var clear_button: Button
 var overlay: Control
 var result_label: Label
+var powerup_title: Label
+var powerup_buttons := {}      # key -> Button
+var target_menu: PopupMenu
 
 
 func _ready() -> void:
 	randomize()
+	for key in POWERUPS:
+		powerup_enabled[key] = true
 	var bg := ColorRect.new()
 	bg.color = Color(0.05, 0.36, 0.2)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -64,12 +90,12 @@ func _build_menu() -> void:
 	menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(menu)
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 16)
+	box.add_theme_constant_override("separation", 10)
 	menu.add_child(box)
 
-	box.add_child(_make_label("TIEN LEN", 64, Color(1, 0.9, 0.4)))
-	box.add_child(_make_label("Thirteen — Vietnamese card game", 22, IDLE_COLOR))
-	box.add_child(_spacer(12))
+	box.add_child(_make_label("TIEN LEN", 52, Color(1, 0.9, 0.4)))
+	box.add_child(_make_label("Thirteen — Vietnamese card game", 20, IDLE_COLOR))
+	box.add_child(_spacer(6))
 	var four := _make_button("4 Players  —  You vs 3 CPU (full deck)", 24)
 	four.pressed.connect(_start_game.bind(4))
 	box.add_child(four)
@@ -79,7 +105,27 @@ func _build_menu() -> void:
 	var quit := _make_button("Quit", 20)
 	quit.pressed.connect(get_tree().quit)
 	box.add_child(quit)
-	box.add_child(_spacer(12))
+	box.add_child(_spacer(6))
+	box.add_child(_make_label("Power-ups  (toggle on/off — each usable once, up to %d per game)" % MAX_POWERUP_USES,
+		18, Color(1, 0.9, 0.4)))
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 16)
+	grid.add_theme_constant_override("v_separation", 0)
+	for key in POWERUPS:
+		var toggle := CheckButton.new()
+		toggle.text = POWERUPS[key][0]
+		toggle.button_pressed = powerup_enabled[key]
+		toggle.add_theme_font_size_override("font_size", 16)
+		toggle.toggled.connect(func(on): powerup_enabled[key] = on)
+		grid.add_child(toggle)
+		var desc := _make_label(POWERUPS[key][1], 14, Color(0.85, 0.92, 0.85))
+		desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		grid.add_child(desc)
+	var grid_center := CenterContainer.new()
+	grid_center.add_child(grid)
+	box.add_child(grid_center)
+	box.add_child(_spacer(6))
 	var rules := _make_label(
 		"Get rid of all your cards first.  3 is low, 2 is high.  Suits: Spades < Clubs < Diamonds < Hearts.\n" +
 		"Play singles, pairs, triples, four-of-a-kind, straights (3+) or 3+ consecutive pairs.\n" +
@@ -157,6 +203,24 @@ func _build_table() -> void:
 	menu_button.pressed.connect(_show_menu)
 	table.add_child(menu_button)
 
+	# Power-up panel (top-right, under the menu button).
+	var power_box := VBoxContainer.new()
+	power_box.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_set_offsets(power_box, -230, -12, 52, 250)
+	power_box.add_theme_constant_override("separation", 4)
+	table.add_child(power_box)
+	powerup_title = _make_label("", 16, Color(1, 0.9, 0.4))
+	power_box.add_child(powerup_title)
+	for key in POWERUPS:
+		var b := _make_button(POWERUPS[key][0], 15)
+		b.tooltip_text = POWERUPS[key][1]
+		b.pressed.connect(_on_powerup_pressed.bind(key))
+		power_box.add_child(b)
+		powerup_buttons[key] = b
+	target_menu = PopupMenu.new()
+	target_menu.id_pressed.connect(_on_target_chosen)
+	add_child(target_menu)
+
 
 func _build_overlay() -> void:
 	overlay = ColorRect.new()
@@ -199,24 +263,28 @@ func _build_seats() -> void:
 		var backs := HBoxContainer.new()
 		backs.alignment = BoxContainer.ALIGNMENT_CENTER
 		backs.add_theme_constant_override("separation", -26)
+		var peek_row := HBoxContainer.new()
+		peek_row.alignment = BoxContainer.ALIGNMENT_CENTER
 		box.add_child(name_label)
 		if p != HUMAN:
 			box.add_child(backs)
 		box.add_child(info_label)
+		box.add_child(peek_row)
 		table.add_child(box)
 		box.set_anchors_and_offsets_preset(presets[p], Control.PRESET_MODE_KEEP_SIZE)
 		match presets[p]:
 			Control.PRESET_CENTER_TOP:
-				_set_offsets(box, -200, 200, 10, 130)
+				_set_offsets(box, -200, 200, 10, 190)
 			Control.PRESET_CENTER_LEFT:
-				_set_offsets(box, 20, 260, -150, -30)
+				_set_offsets(box, 20, 260, -90, 110)
 			Control.PRESET_CENTER_RIGHT:
-				_set_offsets(box, -260, -20, -150, -30)
+				_set_offsets(box, -260, -20, -90, 110)
 			Control.PRESET_CENTER_BOTTOM:
 				# Your seat is just a name tag at the bottom-left above the hand.
 				box.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 				_set_offsets(box, 20, 220, -230, -170)
-		seats.append({"box": box, "name_label": name_label, "backs": backs, "info_label": info_label})
+		seats.append({"box": box, "name_label": name_label, "backs": backs, "info_label": info_label,
+			"peek_row": peek_row})
 
 
 func _set_offsets(c: Control, l: float, r: float, t: float, b: float) -> void:
@@ -250,6 +318,7 @@ func _spacer(h: int) -> Control:
 
 func _show_menu() -> void:
 	game_id += 1
+	target_menu.hide()
 	menu.visible = true
 	table.visible = false
 	overlay.visible = false
@@ -278,6 +347,14 @@ func _start_game(players: int) -> void:
 	passed = []
 	passed.resize(players)
 	passed.fill(false)
+	locked = passed.duplicate()
+	dead_pile = deck.slice(players * 13)
+	powerup_used = {}
+	powerup_uses_left = MAX_POWERUP_USES
+	lead_steal_armed = false
+	peek_player = -1
+	peek_cards = []
+	flash_text = ""
 	finish_order = []
 	last_combo = {}
 	last_cards = []
@@ -323,6 +400,7 @@ func _do_play(p: int, cards: Array) -> void:
 		hands[p].erase(c)
 	cards = cards.duplicate()
 	cards.sort()
+	dead_pile.append_array(last_cards)
 	last_combo = combo
 	last_cards = cards
 	last_player = p
@@ -355,7 +433,8 @@ func _advance_turn() -> void:
 	for _step in num_players:
 		i = (i + 1) % num_players
 		if i == last_player:
-			_new_round(i if hands[i].size() > 0 else _next_active(i))
+			# A Hand-Locked round winner doesn't get the lead; it passes on.
+			_new_round(i if hands[i].size() > 0 and not locked[i] else _next_active(i))
 			return
 		if hands[i].size() > 0 and not passed[i]:
 			current = i
@@ -364,7 +443,13 @@ func _advance_turn() -> void:
 
 
 func _new_round(leader: int) -> void:
+	if lead_steal_armed and leader != HUMAN and hands[HUMAN].size() > 0:
+		lead_steal_armed = false
+		_log("Lead Steal! You take the lead from %s." % names[leader])
+		leader = HUMAN
 	passed.fill(false)
+	locked.fill(false)
+	dead_pile.append_array(last_cards)
 	last_combo = {}
 	last_cards = []
 	last_player = -1
@@ -400,6 +485,7 @@ func _danger_for(p: int) -> int:
 
 func _end_game() -> void:
 	game_id += 1
+	target_menu.hide()
 	for p in _active_players():
 		finish_order.append(p)
 	_refresh_ui()
@@ -449,8 +535,10 @@ func _on_hint_pressed() -> void:
 	if current != HUMAN:
 		return
 	var cards := AI.choose_play(hands[HUMAN], last_combo, required_card, 0)
+	var remaining := cards.duplicate()
 	for v in hand_views:
-		v.selected = cards.has(v.card)
+		v.selected = remaining.has(v.card)
+		remaining.erase(v.card)
 	_layout_hand()
 	_refresh_buttons()
 	if cards.is_empty():
@@ -530,6 +618,22 @@ func _refresh_ui() -> void:
 				var back := CardView.new()
 				back.setup(-1, false, false, 0.45)
 				backs.add_child(back)
+		var peek_row: HBoxContainer = seat.peek_row
+		for child in peek_row.get_children():
+			child.queue_free()
+		if p == peek_player:
+			var still_held := []
+			var hand_copy: Array = hands[p].duplicate()
+			for c in peek_cards:
+				if hand_copy.has(c):
+					hand_copy.erase(c)
+					still_held.append(c)
+			if not still_held.is_empty():
+				peek_row.add_child(_make_label("Peeked:", 14, TURN_COLOR))
+			for c in still_held:
+				var v := CardView.new()
+				v.setup(c, true, false, 0.6)
+				peek_row.add_child(v)
 
 	# Centre pile.
 	for child in pile_cards.get_children():
@@ -570,6 +674,10 @@ func _refresh_buttons() -> void:
 			status_label.text = err
 		else:
 			status_label.text = "Ready: %s" % Rules.type_name(Rules.analyze(_selected_cards()))
+	_refresh_powerups()
+	if flash_text != "":
+		status_label.text = flash_text
+		flash_text = ""
 
 
 func _log(line: String) -> void:
@@ -577,3 +685,157 @@ func _log(line: String) -> void:
 	while log_lines.size() > 8:
 		log_lines.pop_front()
 	print(line)
+
+
+# ============================================================================
+# Power-ups
+# ============================================================================
+
+func _opponents_with_cards() -> Array:
+	var result := []
+	for p in _active_players():
+		if p != HUMAN:
+			result.append(p)
+	return result
+
+
+## Why `key` can't be used right now, or "" if it can.
+func _powerup_block(key: String) -> String:
+	if not powerup_enabled.get(key, false):
+		return "off"
+	if powerup_used.has(key):
+		return "used"
+	if powerup_uses_left <= 0:
+		return "no uses left"
+	if not table.visible or overlay.visible or hands[HUMAN].is_empty():
+		return "unavailable"
+	match key:
+		"peek":
+			if _opponents_with_cards().is_empty():
+				return "no targets"
+		"lead_steal":
+			pass  # can be armed at any time; fires when the next round starts
+		"lucky_draw":
+			if current != HUMAN:
+				return "your turn only"
+			if dead_pile.is_empty():
+				return "dead pile empty"
+		"suit_up":
+			if current != HUMAN:
+				return "your turn only"
+		"hand_lock":
+			if current != HUMAN:
+				return "your turn only"
+			if _lockable_opponents().is_empty():
+				return "no targets"
+	return ""
+
+
+func _lockable_opponents() -> Array:
+	var result := []
+	for p in _opponents_with_cards():
+		if not locked[p]:
+			result.append(p)
+	return result
+
+
+func _refresh_powerups() -> void:
+	var any_enabled := false
+	for key in POWERUPS:
+		var b: Button = powerup_buttons[key]
+		b.visible = powerup_enabled.get(key, false)
+		any_enabled = any_enabled or b.visible
+		var block := _powerup_block(key)
+		b.disabled = block != ""
+		var label: String = POWERUPS[key][0]
+		if key == "lead_steal" and lead_steal_armed:
+			label += " (armed)"
+		elif block == "used":
+			label += " (used)"
+		b.text = label
+	powerup_title.visible = any_enabled
+	powerup_title.text = "Power-ups: %d use%s left" % [powerup_uses_left, "" if powerup_uses_left == 1 else "s"]
+
+
+func _consume_powerup(key: String) -> void:
+	powerup_used[key] = true
+	powerup_uses_left -= 1
+
+
+func _on_powerup_pressed(key: String) -> void:
+	if _powerup_block(key) != "":
+		return
+	match key:
+		"peek", "hand_lock":
+			var targets := _opponents_with_cards() if key == "peek" else _lockable_opponents()
+			if targets.size() == 1:
+				_apply_targeted_powerup(key, targets[0])
+				return
+			pending_target_power = key
+			target_menu.clear()
+			for p in targets:
+				target_menu.add_item(names[p], p)
+			target_menu.popup(Rect2i(Vector2i(get_global_mouse_position()), Vector2i.ZERO))
+		"lead_steal":
+			_consume_powerup(key)
+			lead_steal_armed = true
+			_log("You armed Lead Steal — you'll lead the next round.")
+			_refresh_ui()
+		"suit_up", "lucky_draw":
+			_apply_card_powerup(key)
+
+
+func _on_target_chosen(p: int) -> void:
+	var key := pending_target_power
+	pending_target_power = ""
+	if key != "" and _powerup_block(key) == "":
+		_apply_targeted_powerup(key, p)
+
+
+func _apply_targeted_powerup(key: String, p: int) -> void:
+	_consume_powerup(key)
+	if key == "peek":
+		var shown: Array = hands[p].duplicate()
+		shown.shuffle()
+		peek_player = p
+		peek_cards = shown.slice(0, 3)
+		peek_cards.sort()
+		_log("You peeked at %s's hand." % names[p])
+	else:
+		locked[p] = true
+		passed[p] = true
+		_log("You Hand-Locked %s for the rest of this round." % names[p])
+	_refresh_ui()
+
+
+## Suit Up / Lucky Draw act on exactly one selected card.
+func _apply_card_powerup(key: String) -> void:
+	var sel := _selected_cards()
+	if sel.size() != 1:
+		flash_text = "Select exactly one card, then press %s." % POWERUPS[key][0]
+		_refresh_buttons()
+		return
+	var card: int = sel[0]
+	if card == required_card:
+		flash_text = "The %s must be played to open the game." % Rules.card_name(card)
+		_refresh_buttons()
+		return
+	var new_card: int
+	if key == "suit_up":
+		if Rules.suit(card) == 3:
+			flash_text = "Hearts is already the highest suit."
+			_refresh_buttons()
+			return
+		new_card = card + 1
+		_log("Suit Up: your %s became the %s." % [Rules.card_name(card), Rules.card_name(new_card)])
+	else:
+		new_card = dead_pile.pop_at(randi() % dead_pile.size())
+		dead_pile.append(card)
+		_log("Lucky Draw: you discarded the %s and drew the %s." % [
+			Rules.card_name(card), Rules.card_name(new_card)])
+	_consume_powerup(key)
+	hands[HUMAN].erase(card)
+	hands[HUMAN].append(new_card)
+	hands[HUMAN].sort()
+	_rebuild_hand()
+	_refresh_ui()

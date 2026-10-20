@@ -6,6 +6,19 @@ A playable prototype of the Vietnamese card game **Tiến Lên** built with **Go
 - **4 Players:** you against 3 CPU opponents, full 52-card deck, 13 cards each.
 - **2 Players:** you against 1 CPU, half the deck. 26 cards are dealt (13 each) and the rest stay out of play.
 
+## Power-ups
+Each power-up can be switched on or off with a toggle on the main menu. In a game you can use each enabled power-up once, up to **2 power-ups in total**. They appear in the top-right panel. Power-ups are for you only; the CPUs don't use them.
+
+| Power-up | Effect | When |
+|---|---|---|
+| **Peek (Nhìn Lén)** | Shows three random cards from the opponent you pick. They stay shown next to that opponent's seat until played. | Any time |
+| **Suit Up** | Select one card to raise its suit one level (♠ → ♣ → ♦ → ♥). This can give you a duplicate of a card an opponent holds. | Your turn |
+| **Lucky Draw** | Select one card to discard. You draw a random card from the dead pile (undealt cards, cleared tricks, and discards). | Your turn, once the dead pile isn't empty |
+| **Lead Steal** | Arms the power-up. You lead the next new round, even if someone else won the round before it. | Any time |
+| **Hand Lock** | The opponent you pick is locked out for the rest of the round. If they win that round, the lead passes to the next player instead of them. | Your turn |
+
+Suit Up and Lucky Draw can't be used on the card you're required to open the game with.
+
 ## Running
 1. Install Godot 4.3 or later (standard build, not .NET).
 2. Open Godot, choose **Import**, and select `project.godot` in this folder.
