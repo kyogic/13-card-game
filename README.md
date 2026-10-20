@@ -37,6 +37,7 @@ Suit Up and Lucky Draw can't be used on the card you're required to open the gam
   - 4+ consecutive pairs beat a pair of 2s, four of a kind, and shorter double sequences.
 - Play continues until only one player has cards left. Finishing order and total game length are shown at the end.
 - A game clock in the top-right corner shows how long the current game has been running.
+- Background music (`audio/cardgame_song.mp3`) loops the whole time. Turn it off with the **Background music** toggle on the main menu.
 
 ## Code layout
 | File | Purpose |

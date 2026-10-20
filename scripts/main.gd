@@ -4,6 +4,7 @@ extends Control
 const Rules := preload("res://scripts/rules.gd")
 const AI := preload("res://scripts/ai.gd")
 const CardView := preload("res://scripts/card_view.gd")
+const MUSIC := preload("res://audio/cardgame_song.mp3")
 
 const HUMAN := 0
 var CPU_DELAY := 0.9
@@ -68,6 +69,7 @@ var powerup_title: Label
 var powerup_buttons := {}      # key -> Button
 var target_menu: PopupMenu
 var timer_label: Label
+var music_player: AudioStreamPlayer
 
 
 func _ready() -> void:
@@ -78,6 +80,7 @@ func _ready() -> void:
 	bg.color = Color(0.05, 0.36, 0.2)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
+	_start_music()
 	_build_menu()
 	_build_table()
 	_build_overlay()
@@ -128,6 +131,14 @@ func _build_menu() -> void:
 	var grid_center := CenterContainer.new()
 	grid_center.add_child(grid)
 	box.add_child(grid_center)
+	var music_toggle := CheckButton.new()
+	music_toggle.text = "Background music"
+	music_toggle.button_pressed = true
+	music_toggle.add_theme_font_size_override("font_size", 16)
+	music_toggle.toggled.connect(func(on): music_player.stream_paused = not on)
+	var music_center := CenterContainer.new()
+	music_center.add_child(music_toggle)
+	box.add_child(music_center)
 	box.add_child(_spacer(6))
 	var rules := _make_label(
 		"Get rid of all your cards first.  3 is low, 2 is high.  Suits: Spades < Clubs < Diamonds < Hearts.\n" +
@@ -322,6 +333,17 @@ func _spacer(h: int) -> Control:
 	var c := Control.new()
 	c.custom_minimum_size = Vector2(0, h)
 	return c
+
+
+## Background song loops for the whole session, across menu and games.
+func _start_music() -> void:
+	var stream: AudioStreamMP3 = MUSIC.duplicate()
+	stream.loop = true
+	music_player = AudioStreamPlayer.new()
+	music_player.stream = stream
+	music_player.volume_db = -6.0
+	add_child(music_player)
+	music_player.play()
 
 
 func _show_menu() -> void:
