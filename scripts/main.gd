@@ -12,6 +12,16 @@ const PLACE_NAMES := ["1st", "2nd", "3rd", "4th"]
 const TURN_COLOR := Color(1.0, 0.85, 0.2)
 const IDLE_COLOR := Color(0.9, 0.95, 0.9)
 const MAX_POWERUP_USES := 2
+## 2-player opponent outfits. The first is the free default; the rest cost coins.
+const OUTFITS := [
+	{"id": "abg", "name": "ABG", "path": "res://assets/characters/abg.png"},
+	{"id": "abg_smile", "name": "ABG Smile", "path": "res://assets/characters/abg_smile.png"},
+	{"id": "abg_pajamas", "name": "ABG Pajamas", "path": "res://assets/characters/abg_pajamas.png"},
+	{"id": "abg_maid", "name": "ABG Maid", "path": "res://assets/characters/abg_maid.png"},
+]
+const UNLOCK_COST := 1
+const MATCH_WINS_NEEDED := 2   # 2-player games are best of 3
+const OPPONENT_2P := "ABG"
 ## key -> [button name, description]. Each power-up can be used once per game.
 const POWERUPS := {
 	"suit_up": ["Suit Up", "Turn one card into the Heart of the same rank (the highest suit)."],
@@ -46,6 +56,15 @@ var wild_card := -1            # value of the card in your hand made wild, or -1
 var pending_target_power := ""
 var flash_text := ""           # one-shot status message shown on the next refresh
 var game_start_ms := 0
+
+# --- 2-player match + progression -------------------------------------------
+var save_path := "user://save.cfg"
+var coins := 0
+var unlocked: Array = ["abg"]
+var selected_outfit := "abg"
+var match_wins := [0, 0]       # games won this match by [you, opponent]
+var match_game := 0            # which game of the match is being played
+var last_game_winner := -1     # leads the next game of the match
 var game_running := false
 
 # --- UI ---------------------------------------------------------------------
@@ -69,6 +88,13 @@ var powerup_buttons := {}      # key -> Button
 var target_menu: PopupMenu
 var timer_label: Label
 var music_player: AudioStreamPlayer
+var menu_coins_label: Label
+var wardrobe: Control
+var wardrobe_coins_label: Label
+var wardrobe_slots := {}       # outfit id -> {image, button}
+var portrait: TextureRect
+var match_label: Label
+var again_button: Button
 
 
 func _ready() -> void:
@@ -79,8 +105,10 @@ func _ready() -> void:
 	bg.color = Color(0.05, 0.36, 0.2)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
+	_load_progress()
 	_start_music()
 	_build_menu()
+	_build_wardrobe()
 	_build_table()
 	_build_overlay()
 	_show_menu()
@@ -104,12 +132,26 @@ func _build_menu() -> void:
 	var four := _make_button("4 Players  —  You vs 3 CPU (full deck)", 24)
 	four.pressed.connect(_start_game.bind(4))
 	box.add_child(four)
-	var two := _make_button("2 Players  —  You vs 1 CPU (half deck)", 24)
-	two.pressed.connect(_start_game.bind(2))
+	var two := _make_button("2 Players  —  You vs %s (half deck, best of 3)" % OPPONENT_2P, 24)
+	two.pressed.connect(_start_match)
 	box.add_child(two)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	var wardrobe_button := _make_button("Wardrobe", 20)
+	wardrobe_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	wardrobe_button.pressed.connect(_show_wardrobe)
+	row.add_child(wardrobe_button)
 	var quit := _make_button("Quit", 20)
+	quit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	quit.pressed.connect(get_tree().quit)
-	box.add_child(quit)
+	row.add_child(quit)
+	box.add_child(row)
+
+	menu_coins_label = _make_label("", 24, Color(1, 0.85, 0.2))
+	menu_coins_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	menu_coins_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_set_offsets(menu_coins_label, -260, -20, 14, 50)
+	add_child(menu_coins_label)
 	box.add_child(_spacer(6))
 	box.add_child(_make_label("Power-ups  (toggle on/off — each usable once, up to %d per game)" % MAX_POWERUP_USES,
 		18, Color(1, 0.9, 0.4)))
@@ -220,11 +262,26 @@ func _build_table() -> void:
 	timer_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	_set_offsets(timer_label, -260, -100, 12, 42)
 	table.add_child(timer_label)
+	match_label = _make_label("", 17, Color(1, 0.85, 0.2))
+	match_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	match_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_set_offsets(match_label, -330, -12, 50, 76)
+	table.add_child(match_label)
+
+	# 2-player opponent portrait, sitting across the table from you.
+	portrait = TextureRect.new()
+	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	portrait.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_set_offsets(portrait, -150, 150, 0, 235)
+	table.add_child(portrait)
+	table.move_child(portrait, 0)
 
 	# Power-up panel (top-right, under the menu button).
 	var power_box := VBoxContainer.new()
 	power_box.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	_set_offsets(power_box, -230, -12, 52, 250)
+	_set_offsets(power_box, -230, -12, 82, 280)
 	power_box.add_theme_constant_override("separation", 4)
 	table.add_child(power_box)
 	powerup_title = _make_label("", 16, Color(1, 0.9, 0.4))
@@ -248,15 +305,22 @@ func _build_overlay() -> void:
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.add_child(center)
+	var panel := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.04, 0.2, 0.12)
+	style.set_corner_radius_all(12)
+	style.set_content_margin_all(28)
+	panel.add_theme_stylebox_override("panel", style)
+	center.add_child(panel)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 14)
-	center.add_child(box)
+	panel.add_child(box)
 	box.add_child(_make_label("Game Over", 44, Color(1, 0.9, 0.4)))
 	result_label = _make_label("", 24, Color.WHITE)
 	box.add_child(result_label)
-	var again := _make_button("Play Again", 22)
-	again.pressed.connect(func(): _start_game(num_players))
-	box.add_child(again)
+	again_button = _make_button("Play Again", 22)
+	again_button.pressed.connect(_on_again_pressed)
+	box.add_child(again_button)
 	var back := _make_button("Main Menu", 22)
 	back.pressed.connect(_show_menu)
 	box.add_child(back)
@@ -289,7 +353,11 @@ func _build_seats() -> void:
 		box.set_anchors_and_offsets_preset(presets[p], Control.PRESET_MODE_KEEP_SIZE)
 		match presets[p]:
 			Control.PRESET_CENTER_TOP:
-				_set_offsets(box, -200, 200, 10, 190)
+				if num_players == 2:
+					# Beside the portrait rather than on top of it.
+					_set_offsets(box, 160, 400, 30, 190)
+				else:
+					_set_offsets(box, -200, 200, 10, 190)
 			Control.PRESET_CENTER_LEFT:
 				_set_offsets(box, 20, 260, -90, 110)
 			Control.PRESET_CENTER_RIGHT:
@@ -346,20 +414,32 @@ func _show_menu() -> void:
 	target_menu.hide()
 	game_running = false
 	menu.visible = true
+	wardrobe.visible = false
 	table.visible = false
 	overlay.visible = false
+	menu_coins_label.visible = true
+	menu_coins_label.text = "Coins: %d" % coins
 
 
 # ============================================================================
 # Game flow
 # ============================================================================
 
+func _start_match() -> void:
+	match_wins = [0, 0]
+	match_game = 0
+	last_game_winner = -1
+	_start_game(2)
+
+
 func _start_game(players: int) -> void:
 	game_id += 1
 	num_players = players
 	names = ["You"]
 	for i in range(1, players):
-		names.append("CPU %d" % i if players > 2 else "CPU")
+		names.append("CPU %d" % i if players > 2 else OPPONENT_2P)
+	if players == 2:
+		match_game += 1
 
 	# Deal 13 each. With 2 players only 26 cards (half the deck) are in play.
 	var deck := Rules.new_deck()
@@ -396,12 +476,21 @@ func _start_game(players: int) -> void:
 			current = p
 
 	menu.visible = false
+	menu_coins_label.visible = false
 	overlay.visible = false
 	table.visible = true
 	_build_seats()
-	_log("New %d-player game. %s the %s and %s." % [
-		players, "You hold" if current == HUMAN else names[current] + " holds",
-		Rules.card_name(required_card), "open" if current == HUMAN else "opens"])
+	_update_portrait()
+	if players == 2 and last_game_winner >= 0:
+		# Later games of a match: the previous winner leads with anything.
+		required_card = -1
+		current = last_game_winner
+		_log("Game %d of the match. %s won the last game and %s." % [
+			match_game, names[current], "lead" if current == HUMAN else "leads"])
+	else:
+		_log("New %d-player game. %s the %s and %s." % [
+			players, "You hold" if current == HUMAN else names[current] + " holds",
+			Rules.card_name(required_card), "open" if current == HUMAN else "opens"])
 	_rebuild_hand()
 	_start_turn()
 
@@ -526,8 +615,13 @@ func _end_game() -> void:
 	var length := _format_time(_elapsed_seconds())
 	timer_label.text = "Time  " + length
 	_log("Game over after %s." % length)
-	result_label.text = headline + "\n\n" + "\n".join(lines) + "\n\nGame length:  " + length
+	var text := headline + "\n\n" + "\n".join(lines) + "\n\nGame length:  " + length
+	again_button.text = "Play Again"
+	if num_players == 2:
+		text = headline + "\n\nGame length:  " + length + "\n\n" + _record_match_result(finish_order[0])
+	result_label.text = text
 	overlay.visible = true
+	_refresh_match_label()
 
 
 # ============================================================================
@@ -907,3 +1001,155 @@ func _apply_card_powerup(key: String) -> void:
 	hands[HUMAN].sort()
 	_rebuild_hand()
 	_refresh_ui()
+
+
+# ============================================================================
+# 2-player match, coins and wardrobe
+# ============================================================================
+
+## Records a finished 2-player game and returns the match summary for the results screen.
+func _record_match_result(winner: int) -> String:
+	match_wins[winner] += 1
+	last_game_winner = winner
+	var score := "Match:  You %d – %d %s" % [match_wins[0], match_wins[1], OPPONENT_2P]
+	if match_wins[winner] < MATCH_WINS_NEEDED:
+		again_button.text = "Next Game"
+		return score + "   (best of 3)"
+	again_button.text = "New Match"
+	if winner == HUMAN:
+		coins += 1
+		_save_progress()
+		_log("You won the match! +1 coin.")
+		return score + "\n\nYou won the match!  +1 coin  (%d total)" % coins
+	_log("%s won the match." % OPPONENT_2P)
+	return score + "\n\n%s won the match." % OPPONENT_2P
+
+
+func _match_over() -> bool:
+	return match_wins.max() >= MATCH_WINS_NEEDED
+
+
+func _on_again_pressed() -> void:
+	if num_players != 2:
+		_start_game(num_players)
+	elif _match_over():
+		_start_match()
+	else:
+		_start_game(2)
+
+
+func _refresh_match_label() -> void:
+	match_label.visible = num_players == 2
+	match_label.text = "Game %d  ·  You %d – %d %s" % [match_game, match_wins[0], match_wins[1], OPPONENT_2P]
+
+
+func _outfit(id: String) -> Dictionary:
+	for o in OUTFITS:
+		if o.id == id:
+			return o
+	return OUTFITS[0]
+
+
+## Shows the upper half of the selected outfit across the table in 2-player games.
+func _update_portrait() -> void:
+	portrait.visible = num_players == 2
+	_refresh_match_label()
+	if not portrait.visible:
+		return
+	var tex: Texture2D = load(_outfit(selected_outfit).path)
+	var bust := AtlasTexture.new()
+	bust.atlas = tex
+	bust.region = Rect2(0, 0, tex.get_width(), tex.get_height() * 0.5)
+	portrait.texture = bust
+
+
+func _build_wardrobe() -> void:
+	wardrobe = Control.new()
+	wardrobe.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(wardrobe)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	wardrobe.add_child(center)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 14)
+	center.add_child(box)
+	box.add_child(_make_label("Wardrobe", 44, Color(1, 0.9, 0.4)))
+	wardrobe_coins_label = _make_label("", 20, Color(1, 0.85, 0.2))
+	box.add_child(wardrobe_coins_label)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 24)
+	box.add_child(row)
+	for o in OUTFITS:
+		var slot := VBoxContainer.new()
+		slot.add_theme_constant_override("separation", 6)
+		var image := TextureRect.new()
+		image.texture = load(o.path)
+		image.custom_minimum_size = Vector2(220, 380)
+		image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		slot.add_child(image)
+		slot.add_child(_make_label(o.name, 20, IDLE_COLOR))
+		var button := _make_button("", 18)
+		button.pressed.connect(_on_outfit_pressed.bind(o.id))
+		slot.add_child(button)
+		row.add_child(slot)
+		wardrobe_slots[o.id] = {"image": image, "button": button}
+	var back := _make_button("Back", 20)
+	back.pressed.connect(_show_menu)
+	box.add_child(back)
+
+
+func _show_wardrobe() -> void:
+	menu.visible = false
+	menu_coins_label.visible = false
+	wardrobe.visible = true
+	_refresh_wardrobe()
+
+
+func _refresh_wardrobe() -> void:
+	wardrobe_coins_label.text = "Coins: %d   ·   Win a best-of-3 match against %s to earn a coin" % [
+		coins, OPPONENT_2P]
+	for o in OUTFITS:
+		var slot: Dictionary = wardrobe_slots[o.id]
+		var button: Button = slot.button
+		var owned := unlocked.has(o.id)
+		slot.image.modulate = Color.WHITE if owned else Color(0.15, 0.15, 0.15)
+		if o.id == selected_outfit:
+			button.text = "Selected"
+			button.disabled = true
+		elif owned:
+			button.text = "Select"
+			button.disabled = false
+		else:
+			button.text = "Unlock  (%d coin)" % UNLOCK_COST
+			button.disabled = coins < UNLOCK_COST
+
+
+func _on_outfit_pressed(id: String) -> void:
+	if not unlocked.has(id):
+		if coins < UNLOCK_COST:
+			return
+		coins -= UNLOCK_COST
+		unlocked.append(id)
+	selected_outfit = id
+	_save_progress()
+	_refresh_wardrobe()
+
+
+func _load_progress() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(save_path) != OK:
+		return
+	coins = cfg.get_value("progress", "coins", 0)
+	unlocked = cfg.get_value("progress", "unlocked", ["abg"])
+	selected_outfit = cfg.get_value("progress", "selected_outfit", "abg")
+	if not unlocked.has(selected_outfit):
+		selected_outfit = "abg"
+
+
+func _save_progress() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("progress", "coins", coins)
+	cfg.set_value("progress", "unlocked", unlocked)
+	cfg.set_value("progress", "selected_outfit", selected_outfit)
+	cfg.save(save_path)

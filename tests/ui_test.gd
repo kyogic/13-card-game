@@ -5,12 +5,16 @@ extends SceneTree
 
 const Rules := preload("res://scripts/rules.gd")
 
+const TEST_SAVE := "user://test_save.cfg"
+
 var main: Node
 var failures := 0
 
 
 func _init() -> void:
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE))
 	main = load("res://scenes/main.tscn").instantiate()
+	main.save_path = TEST_SAVE  # never touch the player's real save
 	root.add_child(main)
 	main.set("CPU_DELAY", 0.0)
 	_run.call_deferred()
@@ -23,6 +27,9 @@ func check(cond: bool, msg: String) -> void:
 
 
 func _run() -> void:
+	check(main.music_player.playing and main.music_player.stream.loop, "background music loops")
+	_timer_unit_checks()
+	_match_and_wardrobe_checks()
 	_powerup_unit_checks()
 	for players in [4, 2, 4, 2, 4, 2, 4, 2]:
 		main._start_game(players)
@@ -40,6 +47,7 @@ func _run() -> void:
 			await create_timer(0.01).timeout
 		check(main.overlay.visible, "game stuck")
 		check(main.powerup_uses_left >= 0, "power-up uses went negative")
+		check(not main.game_running and "Game length:" in main.result_label.text, "timer stops and is reported")
 		print("%d-player game: %s | power-ups used: %s" % [players,
 			main.result_label.text.split("\n")[0], main.powerup_used.keys()])
 	print("FAILURES: %d" % failures)
@@ -58,6 +66,54 @@ func _try_random_powerup() -> void:
 
 
 ## Deterministic checks of each power-up's effect.
+func _timer_unit_checks() -> void:
+	check(main._format_time(0) == "0:00", "format 0")
+	check(main._format_time(75) == "1:15", "format 75")
+	check(main._format_time(3725) == "1:02:05", "format 3725")
+
+
+func _match_and_wardrobe_checks() -> void:
+	check(main.coins == 0 and main.selected_outfit == "abg", "fresh save defaults to ABG")
+	main._start_match()
+	check(main.names[1] == "ABG" and main.portrait.visible, "ABG sits across in 2-player")
+
+	# You win game 1, ABG wins game 2, you win game 3 -> match won, +1 coin.
+	main._record_match_result(0)
+	check(main.again_button.text == "Next Game" and not main._match_over(), "match continues after 1-0")
+	main._on_again_pressed()
+	check(main.match_game == 2 and main.current == 0 and main.required_card == -1,
+		"previous winner leads game 2")
+	main._record_match_result(1)
+	main._on_again_pressed()
+	check(main.match_game == 3, "game 3 played at 1-1")
+	main._record_match_result(0)
+	check(main._match_over() and main.coins == 1 and main.again_button.text == "New Match", "match won gives coin")
+
+	# Losing a match gives nothing.
+	main._on_again_pressed()
+	check(main.match_game == 1 and main.match_wins == [0, 0], "new match resets score")
+	main._record_match_result(1)
+	main._record_match_result(1)
+	check(main._match_over() and main.coins == 1, "lost match gives no coin")
+
+	# Spend the coin on an outfit; it becomes selected and is saved.
+	main._show_wardrobe()
+	check(not main.wardrobe_slots["abg_maid"].button.disabled, "can afford unlock")
+	main._on_outfit_pressed("abg_maid")
+	check(main.coins == 0 and main.unlocked.has("abg_maid") and main.selected_outfit == "abg_maid", "unlock")
+	check(main.wardrobe_slots["abg_smile"].button.disabled, "can't unlock without coins")
+	main._on_outfit_pressed("abg_smile")
+	check(not main.unlocked.has("abg_smile"), "no free unlocks")
+	var reloaded = load("res://scenes/main.tscn").instantiate()
+	reloaded.save_path = TEST_SAVE
+	root.add_child(reloaded)
+	check(reloaded.selected_outfit == "abg_maid" and reloaded.unlocked.has("abg_maid"), "progress saved")
+	reloaded.queue_free()
+	main._on_outfit_pressed("abg")
+	check(main.selected_outfit == "abg", "re-select owned outfit for free")
+	main._show_menu()
+
+
 func _powerup_unit_checks() -> void:
 	main._start_game(2)
 	main.current = main.HUMAN
