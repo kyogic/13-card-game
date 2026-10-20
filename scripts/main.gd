@@ -45,6 +45,8 @@ var peek_player := -1
 var peek_cards: Array = []
 var pending_target_power := ""
 var flash_text := ""           # one-shot status message shown on the next refresh
+var game_start_ms := 0
+var game_running := false
 
 # --- UI ---------------------------------------------------------------------
 var menu: Control
@@ -65,6 +67,7 @@ var result_label: Label
 var powerup_title: Label
 var powerup_buttons := {}      # key -> Button
 var target_menu: PopupMenu
+var timer_label: Label
 
 
 func _ready() -> void:
@@ -202,6 +205,11 @@ func _build_table() -> void:
 	menu_button.offset_bottom = 44
 	menu_button.pressed.connect(_show_menu)
 	table.add_child(menu_button)
+	timer_label = _make_label("", 20, IDLE_COLOR)
+	timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	timer_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_set_offsets(timer_label, -260, -100, 12, 42)
+	table.add_child(timer_label)
 
 	# Power-up panel (top-right, under the menu button).
 	var power_box := VBoxContainer.new()
@@ -224,7 +232,7 @@ func _build_table() -> void:
 
 func _build_overlay() -> void:
 	overlay = ColorRect.new()
-	overlay.color = Color(0, 0, 0, 0.6)
+	overlay.color = Color(0, 0, 0, 0.85)
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(overlay)
 	var center := CenterContainer.new()
@@ -319,6 +327,7 @@ func _spacer(h: int) -> Control:
 func _show_menu() -> void:
 	game_id += 1
 	target_menu.hide()
+	game_running = false
 	menu.visible = true
 	table.visible = false
 	overlay.visible = false
@@ -360,6 +369,8 @@ func _start_game(players: int) -> void:
 	last_cards = []
 	last_player = -1
 	log_lines = []
+	game_start_ms = Time.get_ticks_msec()
+	game_running = true
 
 	# Lowest card dealt (3♠ in a full game) opens the game and must be played.
 	required_card = 52
@@ -493,7 +504,11 @@ func _end_game() -> void:
 	for i in finish_order.size():
 		lines.append("%s  —  %s" % [PLACE_NAMES[i], names[finish_order[i]]])
 	var headline := "You win!" if finish_order[0] == HUMAN else "%s wins." % names[finish_order[0]]
-	result_label.text = headline + "\n\n" + "\n".join(lines)
+	game_running = false
+	var length := _format_time(_elapsed_seconds())
+	timer_label.text = "Time  " + length
+	_log("Game over after %s." % length)
+	result_label.text = headline + "\n\n" + "\n".join(lines) + "\n\nGame length:  " + length
 	overlay.visible = true
 
 
@@ -678,6 +693,21 @@ func _refresh_buttons() -> void:
 	if flash_text != "":
 		status_label.text = flash_text
 		flash_text = ""
+
+
+func _process(_delta: float) -> void:
+	if game_running and table.visible:
+		timer_label.text = "Time  " + _format_time(_elapsed_seconds())
+
+
+func _elapsed_seconds() -> int:
+	return (Time.get_ticks_msec() - game_start_ms) / 1000
+
+
+func _format_time(seconds: int) -> String:
+	if seconds >= 3600:
+		return "%d:%02d:%02d" % [seconds / 3600, seconds / 60 % 60, seconds % 60]
+	return "%d:%02d" % [seconds / 60, seconds % 60]
 
 
 func _log(line: String) -> void:

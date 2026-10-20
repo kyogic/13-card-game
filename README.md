@@ -35,7 +35,8 @@ Suit Up and Lucky Draw can't be used on the card you're required to open the gam
   - 3 consecutive pairs or four of a kind beat a single 2.
   - Four of a kind beats a pair of 2s and 3 consecutive pairs.
   - 4+ consecutive pairs beat a pair of 2s, four of a kind, and shorter double sequences.
-- Play continues until only one player has cards left. Finishing order is shown at the end.
+- Play continues until only one player has cards left. Finishing order and total game length are shown at the end.
+- A game clock in the top-right corner shows how long the current game has been running.
 
 ## Code layout
 | File | Purpose |
