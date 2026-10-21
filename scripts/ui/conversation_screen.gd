@@ -7,6 +7,7 @@ extends Control
 
 signal action_taken(kind: String)
 signal left
+signal journal_pressed
 
 const AffectionMeter := preload("res://scripts/ui/affection_meter.gd")
 const Character := preload("res://scripts/character.gd")
@@ -57,6 +58,11 @@ func _init() -> void:
 	subtitles_toggle.text = "English subtitles"
 	subtitles_toggle.toggled.connect(_on_subtitles_toggled)
 	top.add_child(subtitles_toggle)
+	var journal_button := Button.new()
+	journal_button.text = "Journal"
+	journal_button.add_theme_font_size_override("font_size", 16)
+	journal_button.pressed.connect(func(): journal_pressed.emit())
+	top.add_child(journal_button)
 	col.add_child(top)
 	status_label = Label.new()
 	status_label.add_theme_font_size_override("font_size", 17)
@@ -107,6 +113,7 @@ func open(id: String, location: String, location_name: String) -> void:
 	meter.set_character(id)
 	_clear_choices()
 	visible = true
+	EventBus.fire("conversation_opened", {"character_id": id, "location": location})
 	_say_event("greeting")
 
 
@@ -233,6 +240,7 @@ func _on_talk() -> void:
 		var f: Dictionary = next.data
 		st.soft_facts_seen.append(f.id)
 		GameState.log_event("talk", "%s opened up about %s." % [profile.first_name(), f.id.replace("_", " ")])
+		_learned([f.id], "talk")
 		var reveal: Dictionary = f.duplicate()
 		reveal["speaker"] = character_id
 		_play(_lines([reveal]), func(): _say_event("on_soft_fact_revealed", func(): action_taken.emit("talk")))
@@ -241,6 +249,7 @@ func _on_talk() -> void:
 		var fact: Dictionary = next.data
 		st.talks_seen.append(fact.id)
 		GameState.log_event("talk", "%s mentioned her %s." % [profile.first_name(), fact.id.replace("_", " ")])
+		_learned(fact.get("teaches", []), "talk")
 		_play(_lines(fact.lines), func(): action_taken.emit("talk"))
 		return
 	var ex: Dictionary = next.data
@@ -253,10 +262,16 @@ func _on_talk() -> void:
 				ex.id.replace("_", " "), choice.quality])
 			EventBus.fire("talk_choice_made", {"character_id": character_id, "quality": choice.quality,
 				"exchange": ex.id})
+			_learned(ex.get("teaches", []), "talk")
 			_play(_lines(choice.reply), func(): action_taken.emit("talk"))))
 
 
 ## Questions she'll still ask: not answered yet, and within her current affection gate.
+## Tells the journal (and anyone else) what you just found out about her.
+func _learned(facts: Array, source: String) -> void:
+	EventBus.fire("fact_learned", {"character_id": character_id, "facts": facts, "source": source})
+
+
 func _unanswered_trivia() -> Array:
 	var st: Dictionary = GameState.char_state(character_id)
 	return profile.trivia_available(st.affection).filter(
@@ -280,6 +295,7 @@ func _on_quiz() -> void:
 		EventBus.fire("trivia_answered", {"character_id": character_id, "question": Character.trivia_id(q),
 			"correct": correct})
 		if correct:
+			_learned([Character.trivia_id(q)], "quiz")
 			_say_event("on_trivia_correct", func(): action_taken.emit("quiz"))
 		else:
 			_say_event("on_trivia_wrong", func(): action_taken.emit("quiz")))  # no answer: learn it by talking

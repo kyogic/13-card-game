@@ -7,6 +7,7 @@ const ConversationScreen := preload("res://scripts/ui/conversation_screen.gd")
 const CalendarScreen := preload("res://scripts/ui/calendar_screen.gd")
 const SummaryScreen := preload("res://scripts/ui/summary_screen.gd")
 const DebugPanel := preload("res://scripts/ui/debug_panel.gd")
+const JournalScreen := preload("res://scripts/ui/journal_screen.gd")
 const ReactionBubble := preload("res://scripts/ui/reaction_bubble.gd")
 const AffectionMeter := preload("res://scripts/ui/affection_meter.gd")
 
@@ -14,6 +15,7 @@ var screens: Control           # opaque full-screen container for the day's scre
 var calendar
 var conversation
 var summary
+var journal
 var debug_panel
 var bubble
 var date_meter
@@ -36,10 +38,14 @@ func _init() -> void:
 	conversation.action_taken.connect(_on_action_taken)
 	conversation.left.connect(_show_calendar)
 	screens.add_child(conversation)
+	journal = JournalScreen.new()
 	summary = SummaryScreen.new()
 	summary.closed.connect(_on_summary_closed)
 	summary.menu_requested.connect(_return_to_menu)
 	screens.add_child(summary)
+	screens.add_child(journal)  # overlay above the other screens
+	calendar.journal_pressed.connect(func(): journal.open())
+	conversation.journal_pressed.connect(func(): journal.open(conversation.character_id))
 
 	# During a date: her speech bubble down by her feet (so it never covers her face),
 	# growing upwards from just above her name, and her affection meter under her name.
@@ -75,6 +81,7 @@ func _ready() -> void:
 
 func hide_all() -> void:
 	screens.visible = false
+	journal.visible = false
 	date_meter.visible = false
 	bubble.dismiss()
 

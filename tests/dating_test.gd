@@ -116,6 +116,29 @@ func _affection_checks() -> void:
 	check(state.to_dict().characters.jessica.affection == 79, "state serializes")
 
 
+# --- Journal ------------------------------------------------------------------------
+
+func _journal_checks(quizzed: Dictionary) -> void:
+	var journal: Node = root.get_node("Journal")
+	var st: Dictionary = state.char_state("jessica")
+	check(st.met and not state.char_state("arisa").met, "journal knows who you've met")
+	check(st.known_facts.has("boba_order") and st.known_facts.has(quizzed.id),
+		"talk and right quiz answers are recorded: %s" % [st.known_facts])
+	var entries: Array = journal.entries("jessica")
+	check(entries.size() == st.known_facts.size() and entries.any(
+		func(e): return e.label == "Boba order" and e.text == "Taro with lychee jelly"), "journal entries")
+	check(journal.gift_notes("jessica") == {"loved": ["taro_boba"]}, "gift reactions noted")
+	convo.journal_pressed.emit()
+	var page = layer.journal
+	check(page.visible and page.character_id == "jessica" and "Taro with lychee jelly" in page.facts_label.text
+		and ("of %d" % journal.total("jessica")) in page.progress_label.text and "Taro Boba" in page.gifts_label.text,
+		"journal page from the conversation")
+	page.show_page("arisa")
+	check(page.facts_label.text == "You haven't met her yet.", "unmet girl's page")
+	page.get_child(1).find_children("*", "Button", true, false).filter(func(b): return b.text == "Close")[0].pressed.emit()
+	check(not page.visible and convo.visible, "closing the journal returns to the conversation")
+
+
 # --- Dialogue / conversation / reactions ------------------------------------------
 
 var app: Node
@@ -226,6 +249,7 @@ func _dialogue_checks() -> void:
 	check(db.text_label.text in characters.profile("jessica").data.dialogue.on_gift_loved, "gift reaction line")
 	await _drain()
 	check(state.time_left == 1, "gifts are free")
+	await _journal_checks(q)
 
 	# Nickname: no "anh" until unlocked (Into it, 45).
 	check(not ("anh" in characters.profile("jessica").line("on_game_loss_player",

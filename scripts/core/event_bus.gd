@@ -21,6 +21,8 @@ signal date_closed(info: Dictionary)     # {completed: bool}
 signal talk_choice_made(info: Dictionary)   # {character_id, quality}
 signal trivia_answered(info: Dictionary)    # {character_id, question, correct}
 signal gift_given(info: Dictionary)         # {character_id, gift_id, category}
+signal conversation_opened(info: Dictionary)  # {character_id, location}
+signal fact_learned(info: Dictionary)       # {character_id, facts: [trivia ids], source: "talk"|"quiz"}
 signal affection_changed(info: Dictionary)  # {character_id, delta, value, reason}
 signal affection_stage_reached(info: Dictionary)  # {character_id, stage, unlocks}
 signal time_advanced(info: Dictionary)      # {slot_index, time_left}

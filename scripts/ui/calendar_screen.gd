@@ -6,6 +6,7 @@ signal location_picked(id: String)
 signal wait_pressed
 signal save_pressed
 signal menu_pressed
+signal journal_pressed
 
 const AffectionMeter := preload("res://scripts/ui/affection_meter.gd")
 const Character := preload("res://scripts/character.gd")
@@ -69,6 +70,12 @@ func _init() -> void:
 	save.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	save.pressed.connect(func(): save_pressed.emit())
 	row.add_child(save)
+	var journal := Button.new()
+	journal.text = "Journal"
+	journal.add_theme_font_size_override("font_size", 16)
+	journal.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	journal.pressed.connect(func(): journal_pressed.emit())
+	row.add_child(journal)
 	var menu := Button.new()
 	menu.text = "Main menu"
 	menu.tooltip_text = "Saves, then returns to the main menu"
