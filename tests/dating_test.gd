@@ -416,8 +416,12 @@ func _calendar_checks() -> void:
 		"Curious unlocks the boba shop")
 	layer.calendar.location_buttons.pho_spot.pressed.emit()
 	await process_frame
-	check(layer.calendar.visible and "nobody you know" in layer.calendar.message_label.text and state.time_left == 2,
-		"empty location: message and travel costs 1")
+	check(layer.calendar.visible and "Nobody you know" in layer.calendar.message_label.text and state.time_left == 3,
+		"empty location: a message, and no time lost")
+	var buttons: Dictionary = layer.calendar.location_buttons
+	check("Jessica is here" in buttons.boba_shop.text and "Arisa is here" in buttons.thai_tea_shop.text
+		and not "here" in buttons.pho_spot.text, "the map shows where each girl is: " + buttons.boba_shop.text)
+	state.time_left = 2  # the rest of this check was written around 2 units left
 	layer.calendar.location_buttons.boba_shop.pressed.emit()
 	await process_frame
 	check(convo.visible and convo.location_id == "boba_shop", "she's at the boba shop in the afternoon")

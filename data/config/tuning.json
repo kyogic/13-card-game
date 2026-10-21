@@ -20,8 +20,7 @@
     "units_per_slot": 3,
     "talk": 1,
     "quiz": 1,
-    "gift": 0,
-    "travel_empty": 1
+    "gift": 0
   },
   "events": {
     "two_saved_max_cards": 3

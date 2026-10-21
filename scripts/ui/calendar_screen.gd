@@ -49,7 +49,7 @@ func _init() -> void:
 	for id in Calendar.location_ids():
 		var b := Button.new()
 		b.add_theme_font_size_override("font_size", 17)
-		b.custom_minimum_size = Vector2(440, 50)
+		b.custom_minimum_size = Vector2(440, 64)
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		b.pressed.connect(func(): location_picked.emit(id))
 		location_box.add_child(b)
@@ -121,7 +121,16 @@ func refresh() -> void:
 		var b: Button = location_buttons[id]
 		var reason: String = Calendar.lock_reason(id)
 		b.disabled = reason != ""
-		b.text = Calendar.location_name(id) + ("\n[locked: %s]" % reason if reason != "" else "")
+		var here: Array = Calendar.characters_at(id).map(func(c): return Characters.profile(c).first_name())
+		var lines: Array = [Calendar.location_name(id)]
+		if not here.is_empty():
+			lines.append("♥ %s %s here" % [" & ".join(here), "is" if here.size() == 1 else "are"])
+		if reason != "":
+			lines.append("[locked: %s]" % reason)
+		b.text = "\n".join(lines)
+		b.add_theme_color_override("font_color", Color(1, 0.75, 0.85) if not here.is_empty() else Color(0.85, 0.85, 0.9))
+		b.add_theme_color_override("font_disabled_color",
+			Color(0.75, 0.55, 0.65) if not here.is_empty() else Color(0.5, 0.5, 0.55))
 	var items := []
 	for g in GameState.inventory:
 		if GameState.inventory[g] > 0:

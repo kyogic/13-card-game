@@ -64,7 +64,8 @@ You have one day with four parts: Morning, Afternoon, Evening and Night. In each
   - She also asks **about you** (her `compatibility_questions`): three answers that fit her (good), sort of (neutral) or don't (bad). Good is +6 affection and +$10, neutral +1, bad -4. Each girl's `ask_rules` set the chance per Talk (25%) and the limit (2 a day). She never repeats one in a story, and only asks those her affection has unlocked. Her reaction plays after your answer.
   - **Give gift:** from your starting gifts.
   - **Ask on a date:** plays a best-of-3 Tiến Lên match against her. She reacts to card events in a speech bubble.
-- **If she isn't there,** you lose a little time.
+- **If nobody's there,** you just pick somewhere else; it costs no time.
+- **Where they are:** each location on the calendar says who's there right now ("♥ Jessica is here"), even when it's still locked.
 
 Some places stay locked until her affection reaches a stage. When the day ends, a summary shows:
 - affection gained

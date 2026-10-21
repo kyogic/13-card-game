@@ -192,9 +192,8 @@ func _on_location_picked(location: String) -> void:
 		return
 	var here: Array = Calendar.characters_at(location)
 	if here.is_empty():
-		calendar.show_message("You head to the %s... nobody you know is here." % Calendar.location_name(location))
-		GameState.log_event("travel", "%s: nobody at the %s." % [Calendar.slot_name(), Calendar.location_name(location)])
-		Calendar.spend("travel_empty")
+		# Nobody here: no time lost, you just pick somewhere else.
+		calendar.show_message("Nobody you know is at the %s right now." % Calendar.location_name(location))
 		calendar.refresh()
 		return
 	GameState.location = location
