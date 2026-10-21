@@ -30,7 +30,7 @@ func _run() -> void:
 	check(main.music_player.playing and main.music_player.stream.loop, "background music loops")
 	_timer_unit_checks()
 	_match_and_wardrobe_checks()
-	_jessica_checks()
+	_event_checks()
 	_powerup_unit_checks()
 	for players in [4, 2, 4, 2, 4, 2, 4, 2]:
 		main._start_game(players)
@@ -67,60 +67,112 @@ func _try_random_powerup() -> void:
 
 
 ## Deterministic checks of each power-up's effect.
-func _jessica_checks() -> void:
-	var c = main.character
-	check(c.full_name() == "Jessica Trần" and main.opponent_name == "Jessica", "profile loaded")
+## Records every EventBus card/navigation event as [name, info].
+var events: Array = []
+var recorders := {}
+var bus: Node  # the EventBus autoload (test scripts compile before autoload names exist)
+
+
+func _record(info: Dictionary, event: String) -> void:
+	events.append([event, info])
+
+
+func _names() -> Array:
+	return events.map(func(e): return e[0])
+
+
+func _event_checks() -> void:
+	bus = root.get_node("EventBus")
+	for e in bus.CARD_EVENTS + ["date_closed"]:
+		recorders[e] = _record.bind(e)
+		bus.connect(e, recorders[e])
+	check(main.opponent.id == "jessica" and main.opponent_name == "Jessica", "default opponent from JSON")
+	check(main.opponent.tuning.get("prefers_straights", false), "opponent carries card_ai tuning")
+
+	# match_started fires with the opponent id.
+	events.clear()
+	main._start_match()
+	check(_names() == ["match_started"] and events[0][1].opponent_id == "jessica", "match_started")
 	check(main.nameplate.text == "Jessica Trần", "nameplate uses full name")
 
-	# She only calls you "anh" once affection unlocks it.
-	main.affection = 0
-	check(not ("anh" in c.line("on_game_loss_player", 0)), "no 'anh' at low affection")
-	check("anh" in c.line("on_game_loss_player", 50), "'anh' once unlocked")
+	# Round results: hand_won / hand_lost from the round winner.
+	events.clear()
+	main._emit_hand_result(0)
+	main._emit_hand_result(1)
+	check(_names() == ["hand_won", "hand_lost"], "hand_won / hand_lost")
 
-	# Gifts: loved +15, disliked -5, each costs a coin.
-	main.coins = 2
-	main.give_gift("taro_boba")
-	check(main.affection == 15 and main.coins == 1, "loved gift")
-	main.give_gift("grocery_store_flowers")
-	check(main.affection == 10 and main.coins == 0, "disliked gift")
-	check(main.give_gift("taro_boba") == "" and main.affection == 10, "no gift without coins")
+	# two_saved: win a hand late while holding a dealt 2; only once per game.
+	events.clear()
+	main.dealt_twos = [Rules.RANK_TWO * 4]
+	main.hands[0] = [0, 4, Rules.RANK_TWO * 4]
+	main.two_saved_fired = false
+	main._emit_hand_result(0)
+	main._emit_hand_result(0)
+	check(_names() == ["hand_won", "two_saved", "hand_won"], "two_saved once, late game")
+	events.clear()
+	main.hands[0] = [0, 4, 8, 12, Rules.RANK_TWO * 4]
+	main.two_saved_fired = false
+	main._emit_hand_result(0)
+	check(_names() == ["hand_won"], "no two_saved early in the game")
 
-	# Reaching "Into it" (45) unlocks the Street outfit for free.
-	main.unlocked = ["jessica"]
-	main.affection = 40
-	main._add_affection(7, "test")
-	check(main.unlocked.has("jessica_street"), "stage unlock gives Street outfit")
+	# bomb_played by either side.
+	events.clear()
+	main._track_play(0, Rules.analyze([_c("8", 0), _c("8", 1), _c("8", 2), _c("8", 3)]))
+	main._track_play(1, Rules.analyze([_c("4", 0), _c("4", 1), _c("5", 0), _c("5", 1), _c("6", 0), _c("6", 1)]))
+	check(_names() == ["bomb_played", "bomb_played"] and events[0][1].by == "player"
+		and events[1][1].by == "opponent", "bomb_played by player and opponent")
 
-	# Trivia: the right answer gives +7.
-	main.affection = 0
-	main._offer_trivia()
-	var right := -1
-	for i in main.trivia_buttons.size():
-		if main.trivia_buttons[i].text == main.trivia_question.answer:
-			right = i
-	main._on_trivia_answer(right)
-	check(main.affection == 7, "trivia correct")
+	# powerup_used: the player's, and her signature Lead Steal.
+	events.clear()
+	main._start_game(2)
+	main.current = 0
+	main.required_card = -1
+	main._on_powerup_pressed("lead_steal")
+	check(events.size() == 1 and events[0][0] == "powerup_used" and events[0][1].by == "player"
+		and events[0][1].id == "lead_steal" and events[0][1].first, "player powerup_used")
+	main.lead_steal_armed = false
+	events.clear()
+	main.her_round_best = 12
+	main.last_player = 0
+	main._new_round(0)
+	check(main.current == 1 and "powerup_used" in _names(), "her Lead Steal emits powerup_used")
+	check(events.filter(func(e): return e[0] == "powerup_used")[0][1].by == "opponent", "...by opponent")
 
-	# Signature Lead Steal: after losing a round she played a 2 in.
+	# match_ended only when the best-of-3 is decided.
+	events.clear()
 	main._start_match()
-	main.her_round_best = 12
-	main.last_player = 0
-	main._new_round(0)
-	check(main.current == 1 and main.her_powerup_used and main.last_speech == "Nope. My lead now.",
-		"Jessica steals the lead")
-	main.her_round_best = 12
-	main.last_player = 0
-	main._new_round(0)
-	check(main.current == 0, "her Lead Steal is once per game")
+	events.clear()
+	main.finish_order = [0, 1]
+	main.hands[0] = []
+	main._end_game()
+	check(not ("match_ended" in _names()), "no match_ended after game 1")
+	main._start_game(2)
+	main.finish_order = [0, 1]
+	main.hands[0] = []
+	main._end_game()
+	var ended := events.filter(func(e): return e[0] == "match_ended")
+	check(ended.size() == 1 and ended[0][1].winner == "player" and ended[0][1].score == [2, 0], "match_ended")
 
-	# Profile screen shows the bracelet story once unlocked.
-	main.affection = 75
-	main._show_profile()
-	check(main.profile_screen.visible and "bà ngoại" in main.profile_screen.story_label.text, "bracelet story")
-	main.affection = 0
-	main.coins = 0
-	main.unlocked = ["jessica"]
-	main._save_progress()
+	# A date: requested by the dating layer, closed back to it after the match.
+	events.clear()
+	bus.fire("date_requested", {"character_id": "jessica", "opponent": main.opponent})
+	check(main.in_date and main.table.visible and "match_started" in _names(), "date starts a match")
+	main.match_wins = [1, 0]
+	main.finish_order = [0, 1]
+	main.hands[0] = []
+	main._end_game()
+	check(main.again_button.text == "Continue the day" and not main.overlay_menu_button.visible, "date result buttons")
+	main._on_again_pressed()
+	check(not main.in_date and _names().back() == "date_closed" and events.back()[1].completed, "date_closed")
+
+	# 4-player games emit nothing about an opponent character.
+	events.clear()
+	main._start_game(4)
+	main._emit_hand_result(0)
+	main._track_play(0, Rules.analyze([_c("8", 0), _c("8", 1), _c("8", 2), _c("8", 3)]))
+	check(events.is_empty(), "no character events in 4-player")
+	for e in recorders:
+		bus.disconnect(e, recorders[e])
 	main._show_menu()
 
 

@@ -6,7 +6,6 @@
   "archetype": "ABG",
   "occupation": "Lash artist, saving up to open her own studio",
   "heritage": "Vietnamese-American, second generation",
-
   "appearance": {
     "hair": "Long dark brown, high ponytail, loose bangs",
     "eyes": "Dark brown, winged liner",
@@ -24,32 +23,102 @@
     ],
     "default_outfit": "Black crop top, ripped black denim shorts"
   },
-
   "personality": {
     "summary": "Confident, teasing, competitive. Acts unbothered, but is fiercely loyal and secretly sentimental.",
-    "traits": ["confident", "teasing", "competitive", "loyal", "secretly soft"],
+    "traits": [
+      "confident",
+      "teasing",
+      "competitive",
+      "loyal",
+      "secretly soft"
+    ],
     "hidden_side": "The heart bracelet was her bà ngoại's. The butterflies stand for change; she got them the year she moved out and started over.",
     "speech_style": "Short, playful, lots of slang. Drops Vietnamese when excited or annoyed. Calls the player 'anh' once affection is high enough."
   },
-
-  "likes": ["taro boba with lychee jelly", "cà phê sữa đá", "EDM festivals", "late-night phở runs", "winning", "people who keep their word"],
-  "dislikes": ["being underestimated", "flakes", "people who play it too safe", "cheap compliments"],
-
-  "gifts": {
-    "loved": ["taro_boba", "festival_tickets", "gold_hoops", "pho_takeout"],
-    "liked": ["ca_phe_sua_da", "nail_set", "scrunchie_pack"],
-    "disliked": ["grocery_store_flowers", "pumpkin_spice_latte"],
-    "affection_values": { "loved": 15, "liked": 7, "neutral": 2, "disliked": -5 }
-  },
-
-  "trivia": [
-    { "question": "What's my go-to boba order?", "answer": "Taro with lychee jelly", "wrong": ["Brown sugar milk tea", "Mango slush", "Thai tea"] },
-    { "question": "What do my butterfly tattoos mean?", "answer": "Starting over", "wrong": ["My favorite animal", "A dare", "My ex"] },
-    { "question": "Who taught me Tiến Lên?", "answer": "My cô and chú at Tết", "wrong": ["My roommate", "A YouTube video", "My boss"] },
-    { "question": "What's my dream?", "answer": "Opening my own lash studio", "wrong": ["Becoming a DJ", "Moving to LA", "Modeling"] },
-    { "question": "Whose bracelet do I wear?", "answer": "My bà ngoại's", "wrong": ["My mom's", "My best friend's", "I bought it myself"] }
+  "likes": [
+    "taro boba with lychee jelly",
+    "cà phê sữa đá",
+    "EDM festivals",
+    "late-night phở runs",
+    "winning",
+    "people who keep their word"
   ],
-
+  "dislikes": [
+    "being underestimated",
+    "flakes",
+    "people who play it too safe",
+    "cheap compliments"
+  ],
+  "gifts": {
+    "loved": [
+      "taro_boba",
+      "festival_tickets",
+      "gold_hoops",
+      "pho_takeout"
+    ],
+    "liked": [
+      "ca_phe_sua_da",
+      "nail_set",
+      "scrunchie_pack"
+    ],
+    "disliked": [
+      "grocery_store_flowers",
+      "pumpkin_spice_latte"
+    ],
+    "affection_values": {
+      "loved": 15,
+      "liked": 7,
+      "neutral": 2,
+      "disliked": -5
+    }
+  },
+  "trivia": [
+    {
+      "question": "What's my go-to boba order?",
+      "answer": "Taro with lychee jelly",
+      "wrong": [
+        "Brown sugar milk tea",
+        "Mango slush",
+        "Thai tea"
+      ]
+    },
+    {
+      "question": "What do my butterfly tattoos mean?",
+      "answer": "Starting over",
+      "wrong": [
+        "My favorite animal",
+        "A dare",
+        "My ex"
+      ]
+    },
+    {
+      "question": "Who taught me Tiến Lên?",
+      "answer": "My cô and chú at Tết",
+      "wrong": [
+        "My roommate",
+        "A YouTube video",
+        "My boss"
+      ]
+    },
+    {
+      "question": "What's my dream?",
+      "answer": "Opening my own lash studio",
+      "wrong": [
+        "Becoming a DJ",
+        "Moving to LA",
+        "Modeling"
+      ]
+    },
+    {
+      "question": "Whose bracelet do I wear?",
+      "answer": "My bà ngoại's",
+      "wrong": [
+        "My mom's",
+        "My best friend's",
+        "I bought it myself"
+      ]
+    }
+  ],
   "card_ai": {
     "style": "aggressive",
     "description": "Dumps low cards fast, plays 2s early to grab control, loves leading with straights. Gets impatient when stalled.",
@@ -63,29 +132,69 @@
     "signature_powerup": "lead_steal",
     "powerup_trigger": "Uses it right after losing a round she thought she'd win."
   },
-
   "affection": {
     "max": 100,
     "stages": [
-      { "min": 0, "label": "Unimpressed", "unlocks": ["intro_scene"] },
-      { "min": 20, "label": "Curious", "unlocks": ["boba_date_location"] },
-      { "min": 45, "label": "Into it", "unlocks": ["casual_outfit_2", "nickname_anh"] },
-      { "min": 70, "label": "Catching feelings", "unlocks": ["night_market_date", "bracelet_story"] },
-      { "min": 90, "label": "Ride or die", "unlocks": ["festival_date", "final_scene"] }
+      {
+        "min": 0,
+        "label": "Unimpressed",
+        "unlocks": [
+          "intro_scene"
+        ]
+      },
+      {
+        "min": 20,
+        "label": "Curious",
+        "unlocks": [
+          "boba_date_location"
+        ]
+      },
+      {
+        "min": 45,
+        "label": "Into it",
+        "unlocks": [
+          "casual_outfit_2",
+          "nickname_anh"
+        ]
+      },
+      {
+        "min": 70,
+        "label": "Catching feelings",
+        "unlocks": [
+          "night_market_date",
+          "bracelet_story"
+        ]
+      },
+      {
+        "min": 90,
+        "label": "Ride or die",
+        "unlocks": [
+          "festival_date",
+          "final_scene"
+        ]
+      }
     ]
   },
-
   "dialogue": {
     "greeting": [
       "Oh, you again? Okay. Deal the cards.",
-      "Ê! You're late. I already ordered for us."
+      {
+        "text": "Ê! You're late. I already ordered for us.",
+        "translation": "Hey! You're late. I already ordered for us."
+      }
     ],
     "on_player_win_hand": [
-      "Trời ơi... okay, lucky hand.",
+      {
+        "text": "Trời ơi... okay, lucky hand.",
+        "translation": "Oh my god... okay, lucky hand."
+      },
       "Hold up. Run that back."
     ],
     "on_player_lose_hand": [
-      "Em thắng rồi! Too easy.",
+      {
+        "text": "Em thắng rồi! Too easy.",
+        "translation": "I won! Too easy."
+      },
       "You played that so safe. Boring."
     ],
     "on_player_bomb": [
@@ -108,15 +217,57 @@
       "...Grocery store flowers? Really?"
     ],
     "on_trivia_wrong": [
-      "Thôi đi. Were you even listening?"
+      {
+        "text": "Thôi đi. Were you even listening?",
+        "translation": "Come on. Were you even listening?"
+      }
     ],
     "on_game_win_player": [
-      "Fine. You win. Chơi lại tomorrow though."
+      {
+        "text": "Fine. You win. Chơi lại tomorrow though.",
+        "translation": "Fine. You win. Rematch tomorrow though."
+      }
     ],
     "on_game_loss_player": [
-      "Better luck next time, anh. I'll still let you buy the boba."
+      {
+        "text": "Better luck next time, anh. I'll still let you buy the boba.",
+        "translation": "Better luck next time, anh (what she calls a guy she's close to). I'll still let you buy the boba."
+      }
+    ],
+    "on_trivia_correct": [
+      "Okay... so you DO listen.",
+      "Huh. Look at you, paying attention."
+    ],
+    "on_gift_liked": [
+      "Cute. Thanks.",
+      "Okay, this is actually nice."
+    ],
+    "on_gift_neutral": [
+      "Oh. Thanks, I guess."
+    ],
+    "on_date_ask": [
+      "A date? Fine. Loser buys the boba.",
+      {
+        "text": "Chơi Tiến Lên? Okay, but I'm not going easy on you.",
+        "translation": "Play Tiến Lên? Okay, but I'm not going easy on you."
+      }
+    ],
+    "on_talk_done": [
+      "You already know all my stuff. Kinda creepy. Kinda cute."
+    ],
+    "on_stage_reached": [
+      "...Okay, you're growing on me."
     ]
   },
-
-  "date_locations": ["boba_shop", "pho_spot", "night_market", "edm_festival"]
+  "date_locations": [
+    "boba_shop",
+    "pho_spot",
+    "night_market",
+    "edm_festival"
+  ],
+  "portrait": "res://assets/characters/jessica/default.png",
+  "nickname_for_player": {
+    "word": "anh",
+    "unlock": "nickname_anh"
+  }
 }

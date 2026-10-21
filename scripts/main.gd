@@ -3,7 +3,6 @@ extends Control
 
 const Rules := preload("res://scripts/rules.gd")
 const Character := preload("res://scripts/character.gd")
-const ProfileScreen := preload("res://scripts/profile_screen.gd")
 const AI := preload("res://scripts/ai.gd")
 const CardView := preload("res://scripts/card_view.gd")
 const MUSIC := preload("res://audio/cardgame_song.mp3")
@@ -25,10 +24,11 @@ const OUTFITS := [
 ]
 const UNLOCK_COST := 1
 const MATCH_WINS_NEEDED := 2   # 2-player games are best of 3
-const PROFILE_PATH := "res://data/characters/jessica.json"
-const GIFT_COST := 1
-## Affection-stage unlocks that map onto things the prototype already has.
-const STAGE_OUTFIT_UNLOCKS := {"casual_outfit_2": "jessica_street"}
+## Opponent for 2-player games started from the menu (dates pass their own).
+const DEFAULT_OPPONENT_PATH := "res://data/characters/jessica.json"
+## Late-game threshold for the `two_saved` event: you win a round still holding a 2
+## you were dealt, with at most this many cards left. Fired once per game.
+const TWO_SAVED_MAX_CARDS := 3
 const FRAME_2P_LEFT := 430      # 2-player: the table frame starts here; Jessica stands to its left
 ## key -> [button name, description]. Each power-up can be used once per game.
 const POWERUPS := {
@@ -74,16 +74,19 @@ var match_wins := [0, 0]       # games won this match by [you, opponent]
 var match_game := 0            # which game of the match is being played
 var last_game_winner := -1     # leads the next game of the match
 
-# --- 2-player character (Jessica) -------------------------------------------
-var character                  # Character profile loaded from PROFILE_PATH
+# --- 2-player opponent --------------------------------------------------------
+## {id, name, full_name, portrait, tuning, signature_powerup}; see Character.to_opponent().
+var opponent := {}
 var opponent_name := "Jessica"
-var affection := 0
+var in_date := false           # match was started by the dating layer
 var her_powerup_used := false  # her signature power-up, once per game
 var her_round_best := -1       # highest rank she played this round (to know she "thought she'd win")
-var last_speech := ""
-var speech_tween: Tween
-var trivia_question := {}
+var dealt_twos: Array = []     # 2s you were dealt this game (for `two_saved`)
+var two_saved_fired := false
 var game_running := false
+## The EventBus autoload, looked up at runtime so the card game also runs without the
+## dating layer (e.g. in tests); with no bus, events simply aren't sent.
+var bus: Node
 
 # --- UI ---------------------------------------------------------------------
 var menu: Control
@@ -113,14 +116,8 @@ var wardrobe_coins_label: Label
 var wardrobe_slots := {}       # outfit id -> {image, button}
 var portrait: TextureRect
 var nameplate: Label
-var affection_label: Label
-var speech_bubble: PanelContainer
-var speech_label: Label
-var profile_screen: Control
-var trivia_box: VBoxContainer
-var trivia_label: Label
-var trivia_buttons: Array = []
-var trivia_result: Label
+var menu_button: Button
+var overlay_menu_button: Button
 var table_frame: Panel
 var match_label: Label
 var again_button: Button
@@ -134,17 +131,16 @@ func _ready() -> void:
 	bg.color = Color(0.05, 0.36, 0.2)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
-	character = Character.load_profile(PROFILE_PATH)
-	opponent_name = character.first_name()
+	_set_opponent(Character.load_profile(DEFAULT_OPPONENT_PATH).to_opponent())
+	bus = get_node_or_null("/root/EventBus")
+	if bus:
+		bus.date_requested.connect(_on_date_requested)
 	_load_progress()
 	_start_music()
 	_build_menu()
 	_build_wardrobe()
 	_build_table()
 	_build_overlay()
-	profile_screen = ProfileScreen.new()
-	profile_screen.setup(self)
-	add_child(profile_screen)
 	_show_menu()
 
 
@@ -171,10 +167,10 @@ func _build_menu() -> void:
 	box.add_child(two)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
-	var profile_button := _make_button(opponent_name, 20)
-	profile_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	profile_button.pressed.connect(_show_profile)
-	row.add_child(profile_button)
+	var day_button := _make_button("Demo Day", 20)
+	day_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	day_button.pressed.connect(func(): if bus: bus.fire("demo_day_requested"))
+	row.add_child(day_button)
 	var wardrobe_button := _make_button("Wardrobe", 20)
 	wardrobe_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	wardrobe_button.pressed.connect(_show_wardrobe)
@@ -303,13 +299,13 @@ func _build_table() -> void:
 	log_label.add_theme_font_size_override("font_size", 14)
 	log_label.add_theme_color_override("font_color", Color(0.85, 0.92, 0.85))
 	table.add_child(log_label)
-	var menu_button := _make_button("Menu", 16)
+	menu_button = _make_button("Menu", 16)
 	menu_button.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	menu_button.offset_left = -90
 	menu_button.offset_right = -12
 	menu_button.offset_top = 10
 	menu_button.offset_bottom = 44
-	menu_button.pressed.connect(_show_menu)
+	menu_button.pressed.connect(_on_menu_button)
 	table.add_child(menu_button)
 	timer_label = _make_label("", 20, IDLE_COLOR)
 	timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -331,35 +327,11 @@ func _build_table() -> void:
 	_set_offsets(portrait, 0, FRAME_2P_LEFT - 10, 10, -78)
 	add_child(portrait)
 	move_child(portrait, table.get_index())
-	nameplate = _make_label(character.full_name(), 28, Color(1, 0.85, 0.4))
+	nameplate = _make_label("", 28, Color(1, 0.85, 0.4))
 	nameplate.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	_set_offsets(nameplate, 0, FRAME_2P_LEFT - 10, -74, -36)
 	add_child(nameplate)
-	affection_label = _make_label("", 15, Color(1, 0.75, 0.85))
-	affection_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	_set_offsets(affection_label, 0, FRAME_2P_LEFT - 10, -36, -10)
-	add_child(affection_label)
-	affection_label.visible = false
 
-	speech_bubble = PanelContainer.new()
-	var bubble_style := StyleBoxFlat.new()
-	bubble_style.bg_color = Color(1, 1, 1, 0.94)
-	bubble_style.set_corner_radius_all(14)
-	bubble_style.set_content_margin_all(12)
-	bubble_style.border_color = Color(0.9, 0.5, 0.7)
-	bubble_style.set_border_width_all(2)
-	speech_bubble.add_theme_stylebox_override("panel", bubble_style)
-	speech_bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	speech_bubble.position = Vector2(14, 10)
-	speech_bubble.custom_minimum_size = Vector2(FRAME_2P_LEFT - 40, 0)
-	speech_label = Label.new()
-	speech_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	speech_label.custom_minimum_size = Vector2(FRAME_2P_LEFT - 64, 0)
-	speech_label.add_theme_font_size_override("font_size", 18)
-	speech_label.add_theme_color_override("font_color", Color(0.15, 0.08, 0.12))
-	speech_bubble.add_child(speech_label)
-	add_child(speech_bubble)
-	speech_bubble.visible = false
 	portrait.visible = false
 	nameplate.visible = false
 
@@ -403,32 +375,12 @@ func _build_overlay() -> void:
 	box.add_child(_make_label("Game Over", 44, Color(1, 0.9, 0.4)))
 	result_label = _make_label("", 24, Color.WHITE)
 	box.add_child(result_label)
-
-	# After each 2-player match: a question about Jessica, for affection.
-	trivia_box = VBoxContainer.new()
-	trivia_box.add_theme_constant_override("separation", 8)
-	trivia_label = _make_label("", 20, Color(1, 0.75, 0.85))
-	trivia_box.add_child(trivia_label)
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 8)
-	grid.add_theme_constant_override("v_separation", 8)
-	for i in 4:
-		var b := _make_button("", 17)
-		b.custom_minimum_size = Vector2(260, 36)
-		b.pressed.connect(_on_trivia_answer.bind(i))
-		grid.add_child(b)
-		trivia_buttons.append(b)
-	trivia_box.add_child(grid)
-	trivia_result = _make_label("", 17, Color(1, 0.9, 0.6))
-	trivia_box.add_child(trivia_result)
-	box.add_child(trivia_box)
 	again_button = _make_button("Play Again", 22)
 	again_button.pressed.connect(_on_again_pressed)
 	box.add_child(again_button)
-	var back := _make_button("Main Menu", 22)
-	back.pressed.connect(_show_menu)
-	box.add_child(back)
+	overlay_menu_button = _make_button("Main Menu", 22)
+	overlay_menu_button.pressed.connect(_show_menu)
+	box.add_child(overlay_menu_button)
 
 
 ## Creates the opponent/you seat widgets for the current player count.
@@ -528,9 +480,6 @@ func _show_menu() -> void:
 	table.visible = false
 	portrait.visible = false
 	nameplate.visible = false
-	affection_label.visible = false
-	speech_bubble.visible = false
-	profile_screen.visible = false
 	overlay.visible = false
 	menu_coins_label.visible = true
 	menu_coins_label.text = "Coins: %d" % coins
@@ -544,6 +493,7 @@ func _start_match() -> void:
 	match_wins = [0, 0]
 	match_game = 0
 	last_game_winner = -1
+	_emit("match_started", {"date": in_date})
 	_start_game(2)
 
 
@@ -575,6 +525,8 @@ func _start_game(players: int) -> void:
 	lead_steal_armed = false
 	her_powerup_used = false
 	her_round_best = -1
+	dealt_twos = hands[HUMAN].filter(func(c): return Rules.rank(c) == Rules.RANK_TWO)
+	two_saved_fired = false
 	wild_card = -1
 	flash_text = ""
 	finish_order = []
@@ -610,8 +562,6 @@ func _start_game(players: int) -> void:
 			players, "You hold" if current == HUMAN else names[current] + " holds",
 			Rules.card_name(required_card), "open" if current == HUMAN else "opens"])
 	_rebuild_hand()
-	if players == 2 and match_game == 1:
-		_say("greeting")
 	_start_turn()
 
 
@@ -624,7 +574,7 @@ func _start_turn() -> void:
 	if my_game != game_id:
 		return  # game was restarted or abandoned while waiting
 	var cards := AI.choose_play(hands[current], last_combo, required_card, _danger_for(current),
-		character.card_tuning() if num_players == 2 else {})
+		opponent.get("tuning", {}) if num_players == 2 else {})
 	if cards.is_empty():
 		_do_pass(current)
 	else:
@@ -646,7 +596,7 @@ func _do_play(p: int, cards: Array, from_hand: Array = []) -> void:
 	required_card = -1
 	_log("%s played %s." % [names[p], Rules.type_name(combo)])
 	if num_players == 2:
-		_react_to_play(p, combo, cards)
+		_track_play(p, combo)
 
 	if hands[p].is_empty():
 		finish_order.append(p)
@@ -654,6 +604,7 @@ func _do_play(p: int, cards: Array, from_hand: Array = []) -> void:
 	if p == HUMAN:
 		_rebuild_hand()
 	if hands[p].is_empty() and _active_players().size() <= 1:
+		_emit_hand_result(p)  # the winning play also wins the last hand
 		_end_game()
 		return
 	_advance_turn()
@@ -690,7 +641,8 @@ func _new_round(leader: int) -> void:
 		_log("Lead Steal! You take the lead from %s." % names[leader])
 		leader = HUMAN
 	elif num_players == 2:
-		leader = _jessica_round_end(round_winner, leader)
+		_emit_hand_result(round_winner)
+		leader = _opponent_round_end(round_winner, leader)
 	her_round_best = -1
 	passed.fill(false)
 	locked.fill(false)
@@ -744,17 +696,14 @@ func _end_game() -> void:
 	_log("Game over after %s." % length)
 	var text := headline + "\n\n" + "\n".join(lines) + "\n\nGame length:  " + length
 	again_button.text = "Play Again"
-	trivia_box.visible = false
+	overlay_menu_button.visible = not in_date
 	if num_players == 2:
-		var quote: String = character.line(
-			"on_game_win_player" if finish_order[0] == HUMAN else "on_game_loss_player", affection)
-		_say_text(quote)
 		text = "%s   ·   Game length:  %s\n%s" % [headline, length, _record_match_result(finish_order[0])]
-		if quote != "":
-			text += "\n\n%s: “%s”" % [opponent_name, quote]
 		if _match_over():
-			_add_affection(character.affection_value("neutral"), "for playing a match with her")
-			_offer_trivia()
+			_emit("match_ended", {"winner": "player" if finish_order[0] == HUMAN else "opponent",
+				"score": match_wins.duplicate(), "date": in_date})
+			if in_date:
+				again_button.text = "Continue the day"
 	result_label.text = text
 	overlay.visible = true
 	_refresh_match_label()
@@ -1060,8 +1009,9 @@ func _refresh_powerups() -> void:
 func _consume_powerup(key: String) -> void:
 	powerup_used[key] = true
 	powerup_uses_left -= 1
-	if num_players == 2 and powerup_uses_left == MAX_POWERUP_USES - 1:
-		_say("on_powerup_used_by_player", true)  # "...already?" only fits the first one
+	if num_players == 2:
+		_emit("powerup_used", {"by": "player", "id": key,
+			"first": powerup_uses_left == MAX_POWERUP_USES - 1})
 
 
 func _on_powerup_pressed(key: String) -> void:
@@ -1174,7 +1124,9 @@ func _match_over() -> bool:
 
 
 func _on_again_pressed() -> void:
-	if num_players != 2:
+	if in_date and _match_over():
+		_finish_date(true)
+	elif num_players != 2:
 		_start_game(num_players)
 	elif _match_over():
 		_start_match()
@@ -1198,11 +1150,14 @@ func _outfit(id: String) -> Dictionary:
 func _update_portrait() -> void:
 	portrait.visible = num_players == 2 and table.visible
 	nameplate.visible = portrait.visible
-	affection_label.visible = portrait.visible
-	_refresh_affection_label()
 	_refresh_match_label()
+	nameplate.text = opponent.get("full_name", opponent_name)
 	if portrait.visible:
-		portrait.texture = load(_outfit(selected_outfit).path)
+		# Wardrobe outfits (if this opponent has any) replace the profile portrait.
+		var path: String = opponent.get("portrait", "")
+		if OUTFITS.any(func(o): return o.id.begins_with(opponent.get("id", "?"))):
+			path = _outfit(selected_outfit).path
+		portrait.texture = load(path)
 
 
 ## Frames the table. In 2-player games the frame moves right to leave room for Jessica,
@@ -1303,7 +1258,6 @@ func _load_progress() -> void:
 	if cfg.load(save_path) != OK:
 		return
 	coins = cfg.get_value("progress", "coins", 0)
-	affection = cfg.get_value("progress", "affection", 0)
 	unlocked = cfg.get_value("progress", "unlocked", ["jessica"])
 	selected_outfit = cfg.get_value("progress", "selected_outfit", "jessica")
 	# Saves from before the character was named used "abg" ids.
@@ -1318,141 +1272,81 @@ func _save_progress() -> void:
 	cfg.set_value("progress", "coins", coins)
 	cfg.set_value("progress", "unlocked", unlocked)
 	cfg.set_value("progress", "selected_outfit", selected_outfit)
-	cfg.set_value("progress", "affection", affection)
 	cfg.save(save_path)
 
 
 # ============================================================================
-# Jessica: dialogue, affection, signature power-up, trivia, gifts
+# Opponent, dates and events for the dating layer
 # ============================================================================
 
-## Shows a line from her profile for `event` in her speech bubble. Minor lines
-## don't interrupt one she is still saying unless `force` is set.
-func _say(event: String, force := false) -> void:
-	if not force and speech_bubble.visible and speech_bubble.modulate.a > 0.5:
-		return
-	_say_text(character.line(event, affection))
+func _set_opponent(info: Dictionary) -> void:
+	opponent = info
+	opponent_name = info.get("name", "Opponent")
 
 
-func _say_text(text: String) -> void:
-	if text == "" or num_players != 2:
-		return
-	last_speech = text
-	_log("%s: “%s”" % [opponent_name, text])
-	speech_label.text = text
-	speech_bubble.visible = table.visible
-	speech_bubble.modulate.a = 1.0
-	if speech_tween:
-		speech_tween.kill()
-	speech_tween = create_tween()
-	speech_tween.tween_interval(3.5)
-	speech_tween.tween_property(speech_bubble, "modulate:a", 0.0, 0.6)
-	speech_tween.tween_callback(func(): speech_bubble.visible = false)
+## The dating layer asks for a date: play a best-of-3 match against that character.
+func _on_date_requested(info: Dictionary) -> void:
+	_set_opponent(info.opponent)
+	in_date = true
+	_start_match()
 
 
-func _react_to_play(p: int, combo: Dictionary, cards: Array) -> void:
-	var bomb: bool = combo.type == Rules.Type.QUAD or combo.type == Rules.Type.DOUBLE_SEQ
-	if p == HUMAN:
-		if bomb:
-			_say("on_player_bomb", true)
-		elif cards.any(func(c): return Rules.rank(c) == Rules.RANK_TWO) and hands[HUMAN].size() <= 2:
-			_say("on_player_saved_two", true)
+## Ends a date and hands control back to the dating layer.
+func _finish_date(completed: bool) -> void:
+	in_date = false
+	_show_menu()
+	if bus:
+		bus.fire("date_closed", {"completed": completed})
+
+
+func _on_menu_button() -> void:
+	if in_date:
+		_finish_date(false)  # leaving a date early
 	else:
+		_show_menu()
+
+
+## Emits a card event for the dating layer. Only 2-player games have an opponent character.
+func _emit(event: String, info: Dictionary = {}) -> void:
+	if num_players != 2 and event != "match_started":
+		return
+	info["opponent_id"] = opponent.get("id", "")
+	if bus:
+		bus.fire(event, info)
+
+
+func _emit_hand_result(round_winner: int) -> void:
+	if num_players != 2 or round_winner < 0:
+		return
+	if round_winner != HUMAN:
+		_emit("hand_lost")
+		return
+	_emit("hand_won")
+	# two_saved: you won this hand while still holding a 2 you were dealt, late in the game.
+	var held := dealt_twos.filter(func(c): return hands[HUMAN].has(c))
+	if not two_saved_fired and not held.is_empty() and hands[HUMAN].size() <= TWO_SAVED_MAX_CARDS:
+		two_saved_fired = true
+		_emit("two_saved")
+
+
+func _track_play(p: int, combo: Dictionary) -> void:
+	var bomb: bool = combo.type == Rules.Type.QUAD or combo.type == Rules.Type.DOUBLE_SEQ
+	if bomb:
+		_emit("bomb_played", {"by": "player" if p == HUMAN else "opponent"})
+	if p != HUMAN:
 		her_round_best = maxi(her_round_best, Rules.RANK_TWO if bomb else Rules.rank(combo.top))
 
 
-## Round-end reactions and her signature Lead Steal: she uses it once per game,
+## Her signature power-up (from the opponent's card_ai): Lead Steal, once per game,
 ## right after losing a round she thought she'd win (she'd played a King or better).
 ## Returns who leads the new round.
-func _jessica_round_end(round_winner: int, leader: int) -> int:
+func _opponent_round_end(round_winner: int, leader: int) -> int:
 	var her := 1
 	var thought_she_won := her_round_best >= Rules.RANK_NAMES.find("K")
-	if character.signature_powerup() == "lead_steal" and not her_powerup_used \
+	if opponent.get("signature_powerup", "") == "lead_steal" and not her_powerup_used \
 			and round_winner != her and leader != her and thought_she_won and hands[her].size() > 0:
 		her_powerup_used = true
 		_log("%s used Lead Steal!" % opponent_name)
-		_say("on_her_powerup", true)
+		_emit("powerup_used", {"by": "opponent", "id": "lead_steal", "first": true})
 		return her
-	if randf() < 0.5:
-		_say("on_player_win_hand" if round_winner == HUMAN else "on_player_lose_hand")
 	return leader
-
-
-func _add_affection(amount: int, reason: String) -> void:
-	var before := affection
-	affection = clampi(affection + amount, 0, character.affection_max())
-	if affection == before:
-		return
-	_log("%s affection %+d %s (%d/%d)." % [opponent_name, affection - before, reason, affection,
-		character.affection_max()])
-	var old_stage: Dictionary = character.stage(before)
-	var new_stage: Dictionary = character.stage(affection)
-	if new_stage.get("min", 0) > old_stage.get("min", 0):
-		_log("%s is now: %s" % [opponent_name, new_stage.label])
-		for key in new_stage.get("unlocks", []):
-			if STAGE_OUTFIT_UNLOCKS.has(key) and not unlocked.has(STAGE_OUTFIT_UNLOCKS[key]):
-				unlocked.append(STAGE_OUTFIT_UNLOCKS[key])
-				_log("Unlocked the %s outfit." % _outfit(STAGE_OUTFIT_UNLOCKS[key]).name)
-	_save_progress()
-	_refresh_affection_label()
-
-
-func _refresh_affection_label() -> void:
-	affection_label.text = "Affection %d/%d  ·  %s" % [affection, character.affection_max(),
-		character.stage(affection).get("label", "")]
-
-
-func _offer_trivia() -> void:
-	var questions: Array = character.trivia()
-	if questions.is_empty():
-		return
-	trivia_question = questions.pick_random()
-	var answers: Array = trivia_question.wrong.duplicate()
-	answers.append(trivia_question.answer)
-	answers.shuffle()
-	trivia_label.text = "%s asks: %s" % [opponent_name, trivia_question.question]
-	for i in trivia_buttons.size():
-		trivia_buttons[i].text = answers[i] if i < answers.size() else ""
-		trivia_buttons[i].visible = i < answers.size()
-		trivia_buttons[i].disabled = false
-	trivia_result.text = "Get it right for +%d affection." % character.affection_value("liked")
-	trivia_box.visible = true
-
-
-func _on_trivia_answer(i: int) -> void:
-	var picked: String = trivia_buttons[i].text
-	for b in trivia_buttons:
-		b.disabled = true
-	if picked == trivia_question.answer:
-		trivia_result.text = "Correct!  +%d affection" % character.affection_value("liked")
-		_add_affection(character.affection_value("liked"), "for knowing her")
-	else:
-		var line: String = character.line("on_trivia_wrong", affection)
-		trivia_result.text = "“%s”  (It was: %s)" % [line, trivia_question.answer]
-
-
-## Buys a gift with coins. Returns her reaction for the profile screen, or "" if unaffordable.
-func give_gift(id: String) -> String:
-	if coins < GIFT_COST:
-		return ""
-	coins -= GIFT_COST
-	var category: String = character.gift_category(id)
-	var amount: int = character.affection_value(category)
-	_add_affection(amount, "for the %s" % Character.pretty(id).to_lower())
-	_save_progress()
-	var line := ""
-	if category == "loved":
-		line = character.line("on_gift_loved", affection)
-	elif category == "disliked":
-		line = character.line("on_gift_disliked", affection)
-	var verdicts := {"loved": "She loved it!", "liked": "She liked it.", "disliked": "She didn't like that.",
-		"neutral": "She accepted it."}
-	return "%s  (%+d affection)%s" % [verdicts[category], amount, "\n“%s”" % line if line != "" else ""]
-
-
-func _show_profile() -> void:
-	menu.visible = false
-	menu_coins_label.visible = false
-	wardrobe.visible = false
-	profile_screen.visible = true
-	profile_screen.refresh()
