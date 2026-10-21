@@ -12,8 +12,8 @@ signal two_saved(info: Dictionary)       # player won a round still holding a de
 signal powerup_used(info: Dictionary)    # {by: "player"|"opponent", id, first: bool}
 
 # --- Navigation between the layers --------------------------------------------
-signal demo_day_requested(info: Dictionary)
-signal continue_day_requested(info: Dictionary)  # load the saved day
+signal new_story_requested(info: Dictionary)
+signal continue_story_requested(info: Dictionary)  # load the saved story
 signal date_requested(info: Dictionary)  # {character_id, location, opponent: {...}}
 signal date_closed(info: Dictionary)     # {completed: bool}
 
@@ -24,7 +24,7 @@ signal gift_given(info: Dictionary)         # {character_id, gift_id, category}
 signal affection_changed(info: Dictionary)  # {character_id, delta, value, reason}
 signal affection_stage_reached(info: Dictionary)  # {character_id, stage, unlocks}
 signal time_advanced(info: Dictionary)      # {slot_index, time_left}
-signal day_ended(info: Dictionary)
+signal day_ended(info: Dictionary)          # {day, final}: final = the last day of the story
 signal game_saved(info: Dictionary)         # {path}
 signal game_loaded(info: Dictionary)        # {path}
 

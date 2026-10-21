@@ -1,5 +1,5 @@
 {
-  "day": 1,
+  "days": 3,
   "slots": [
     {
       "id": "morning",
@@ -25,5 +25,12 @@
     "mango_sticky_rice": 1,
     "thai_milk_tea": 1,
     "extra_spicy_som_tam": 1
-  }
+  },
+  "daily_gifts": {
+    "pho_takeout": 1,
+    "jasmine_garland": 1,
+    "ca_phe_sua_da": 1,
+    "thai_milk_tea": 1
+  },
+  "_comment": "starter_inventory is given at the start of the story; daily_gifts are added each new morning after Day 1."
 }

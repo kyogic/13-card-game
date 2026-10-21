@@ -29,6 +29,7 @@ func check(cond: bool, msg: String) -> void:
 func _run() -> void:
 	check(main.music_player.playing and main.music_player.stream.loop, "background music loops")
 	_timer_unit_checks()
+	_menu_checks()
 	_match_and_wardrobe_checks()
 	_event_checks()
 	_powerup_unit_checks()
@@ -174,6 +175,32 @@ func _event_checks() -> void:
 	for e in recorders:
 		bus.disconnect(e, recorders[e])
 	main._show_menu()
+
+
+## Main menu: Story Mode and Quickplay pages.
+func _menu_checks() -> void:
+	main._show_menu()
+	main._show_menu_page("main")
+	check(main.menu_pages.main.visible and not main.menu_pages.story.visible
+		and not main.menu_pages.quickplay.visible, "main page first")
+	var labels := func(page): return page.find_children("*", "Button", true, false).map(func(b): return b.text)
+	check(labels.call(main.menu_pages.main).has("Story Mode") and labels.call(main.menu_pages.main).has("Quickplay"),
+		"main page has Story Mode and Quickplay")
+	check(labels.call(main.menu_pages.story).has("New Story") and labels.call(main.menu_pages.story).has("Continue Story"),
+		"Story Mode page")
+	var quick: Array = labels.call(main.menu_pages.quickplay)
+	check(quick.any(func(t): return t.begins_with("4 Players")) and quick.any(func(t): return t.begins_with("2 Players")),
+		"Quickplay page has the 2- and 4-player games")
+	check(not labels.call(main.menu_pages.main).any(func(t): return t.begins_with("4 Players")),
+		"card games are no longer on the main page")
+	main.menu_pages.main.find_children("*", "Button", true, false).filter(
+		func(b): return b.text == "Quickplay")[0].pressed.emit()
+	check(main.menu_pages.quickplay.visible and not main.menu_pages.main.visible, "Quickplay opens its page")
+	main.menu_pages.quickplay.find_children("*", "Button", true, false).filter(
+		func(b): return b.text.begins_with("4 Players"))[0].pressed.emit()
+	check(main.table.visible and main.num_players == 4, "Quickplay starts a 4-player game")
+	main._show_menu()
+	main._show_menu_page("main")
 
 
 func _timer_unit_checks() -> void:

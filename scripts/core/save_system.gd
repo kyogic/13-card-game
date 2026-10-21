@@ -1,5 +1,5 @@
 extends Node
-## Save/load for the dating day: one save slot in user://dating_save.json holding
+## Save/load for Story Mode: one save slot in user://dating_save.json holding
 ## GameState.to_dict() plus whether the day is over. Coins and outfits are saved by the
 ## card game itself (user://save.cfg).
 
@@ -48,7 +48,8 @@ func describe() -> String:
 	var slots: Array = Calendar.slots()
 	var i := int(parsed.state.get("slot_index", 0))
 	var slot_name: String = slots[i].name if i < slots.size() else "end of day"
-	return "Day %d · %s · saved %s" % [int(parsed.state.get("day", 1)), slot_name, parsed.get("saved_at", "")]
+	return "Day %d of %d · %s · saved %s" % [int(parsed.state.get("day", 1)), Calendar.days(), slot_name,
+		parsed.get("saved_at", "")]
 
 
 func delete_save() -> void:

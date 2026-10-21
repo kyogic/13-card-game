@@ -90,6 +90,7 @@ var bus: Node
 
 # --- UI ---------------------------------------------------------------------
 var menu: Control
+var menu_pages := {}           # "main" / "story" / "quickplay" -> VBoxContainer
 var table: Control
 var seats: Array = []          # per player: {box, name_label, backs, info_label}
 var pile_label: Label
@@ -156,29 +157,21 @@ func _build_menu() -> void:
 	menu = CenterContainer.new()
 	menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(menu)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
-	menu.add_child(box)
+	var pages := VBoxContainer.new()
+	pages.add_theme_constant_override("separation", 10)
+	menu.add_child(pages)
+	pages.add_child(_make_label("TIEN LEN", 52, Color(1, 0.9, 0.4)))
+	pages.add_child(_make_label("Thirteen — Vietnamese card game", 20, IDLE_COLOR))
+	pages.add_child(_spacer(6))
 
-	box.add_child(_make_label("TIEN LEN", 52, Color(1, 0.9, 0.4)))
-	box.add_child(_make_label("Thirteen — Vietnamese card game", 20, IDLE_COLOR))
-	box.add_child(_spacer(6))
-	var four := _make_button("4 Players  —  You vs 3 CPU (full deck)", 24)
-	four.pressed.connect(_start_game.bind(4))
-	box.add_child(four)
-	var two := _make_button("2 Players  —  You vs %s (half deck, best of 3)" % opponent_name, 24)
-	two.pressed.connect(_start_match)
-	box.add_child(two)
+	# Main page: the two modes, the wardrobe, and settings shared by both modes.
+	var main_page := _menu_page(pages, "main")
+	main_page.add_child(_menu_button("Story Mode", "Date Jessica and Arisa over three days", 26,
+		_show_menu_page.bind("story")))
+	main_page.add_child(_menu_button("Quickplay", "Jump straight into a card game", 26,
+		_show_menu_page.bind("quickplay")))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
-	var day_button := _make_button("New Day", 20)
-	day_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	day_button.pressed.connect(func(): if bus: bus.fire("demo_day_requested"))
-	row.add_child(day_button)
-	var continue_button := _make_button("Continue Day", 20)
-	continue_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	continue_button.pressed.connect(func(): if bus: bus.fire("continue_day_requested"))
-	row.add_child(continue_button)
 	var wardrobe_button := _make_button("Wardrobe", 20)
 	wardrobe_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	wardrobe_button.pressed.connect(_show_wardrobe)
@@ -187,15 +180,9 @@ func _build_menu() -> void:
 	quit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	quit.pressed.connect(get_tree().quit)
 	row.add_child(quit)
-	box.add_child(row)
-
-	menu_coins_label = _make_label("", 24, Color(1, 0.85, 0.2))
-	menu_coins_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	menu_coins_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	_set_offsets(menu_coins_label, -260, -20, 14, 50)
-	add_child(menu_coins_label)
-	box.add_child(_spacer(6))
-	box.add_child(_make_label("Power-ups  (toggle on/off — each usable once, up to %d per game)" % MAX_POWERUP_USES,
+	main_page.add_child(row)
+	main_page.add_child(_spacer(6))
+	main_page.add_child(_make_label("Power-ups  (toggle on/off — each usable once, up to %d per game)" % MAX_POWERUP_USES,
 		18, Color(1, 0.9, 0.4)))
 	var grid := GridContainer.new()
 	grid.columns = 2
@@ -213,7 +200,7 @@ func _build_menu() -> void:
 		grid.add_child(desc)
 	var grid_center := CenterContainer.new()
 	grid_center.add_child(grid)
-	box.add_child(grid_center)
+	main_page.add_child(grid_center)
 	var music_toggle := CheckButton.new()
 	music_toggle.text = "Background music"
 	music_toggle.button_pressed = true
@@ -221,15 +208,61 @@ func _build_menu() -> void:
 	music_toggle.toggled.connect(func(on): music_player.stream_paused = not on)
 	var music_center := CenterContainer.new()
 	music_center.add_child(music_toggle)
-	box.add_child(music_center)
-	box.add_child(_spacer(6))
-	var rules := _make_label(
+	main_page.add_child(music_center)
+
+	# Story Mode: the dating sim (handled by the dating layer through the EventBus).
+	var story_page := _menu_page(pages, "story")
+	story_page.add_child(_make_label("Story Mode", 30, Color(1, 0.85, 0.4)))
+	story_page.add_child(_make_label("Three days. Two girls. You can only be in one place at a time.", 17, IDLE_COLOR))
+	story_page.add_child(_menu_button("New Story", "Start over from Day 1", 24,
+		func(): if bus: bus.fire("new_story_requested")))
+	story_page.add_child(_menu_button("Continue Story", "Pick up from your last save", 24,
+		func(): if bus: bus.fire("continue_story_requested")))
+	story_page.add_child(_menu_button("Back", "", 20, _show_menu_page.bind("main")))
+
+	# Quickplay: straight into a card game.
+	var quick_page := _menu_page(pages, "quickplay")
+	quick_page.add_child(_make_label("Quickplay", 30, Color(1, 0.85, 0.4)))
+	quick_page.add_child(_menu_button("4 Players  —  You vs 3 CPU (full deck)", "", 24, _start_game.bind(4)))
+	quick_page.add_child(_menu_button("2 Players  —  You vs %s (half deck, best of 3)" % opponent_name,
+		"Win the match to earn a coin for the Wardrobe", 24, _start_match))
+	quick_page.add_child(_spacer(6))
+	quick_page.add_child(_make_label(
 		"Get rid of all your cards first.  3 is low, 2 is high.  Suits: Spades < Clubs < Diamonds < Hearts.\n" +
 		"Play singles, pairs, triples, four-of-a-kind, straights (3+) or 3+ consecutive pairs.\n" +
 		"Beat the table with the same kind and size but a higher top card, or pass.\n" +
 		"Passing locks you out until the round resets.  Bombs (4-of-a-kind, consecutive pairs) chop 2s.",
-		15, Color(0.85, 0.92, 0.85))
-	box.add_child(rules)
+		15, Color(0.85, 0.92, 0.85)))
+	quick_page.add_child(_menu_button("Back", "", 20, _show_menu_page.bind("main")))
+
+	menu_coins_label = _make_label("", 24, Color(1, 0.85, 0.2))
+	menu_coins_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	menu_coins_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_set_offsets(menu_coins_label, -260, -20, 14, 50)
+	add_child(menu_coins_label)
+	_show_menu_page("main")
+
+
+func _menu_page(parent: Control, page_name: String) -> VBoxContainer:
+	var page := VBoxContainer.new()
+	page.name = page_name
+	page.add_theme_constant_override("separation", 10)
+	parent.add_child(page)
+	menu_pages[page_name] = page
+	return page
+
+
+func _menu_button(text: String, tooltip: String, font_size: int, action: Callable) -> Button:
+	var b := _make_button(text, font_size)
+	b.tooltip_text = tooltip
+	b.custom_minimum_size = Vector2(560, 0)
+	b.pressed.connect(action)
+	return b
+
+
+func _show_menu_page(page_name: String) -> void:
+	for p in menu_pages:
+		menu_pages[p].visible = p == page_name
 
 
 func _build_table() -> void:

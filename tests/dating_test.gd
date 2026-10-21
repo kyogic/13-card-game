@@ -148,7 +148,7 @@ func _dialogue_checks() -> void:
 	convo = layer.conversation
 
 	cal = root.get_node("Calendar")
-	bus.fire("demo_day_requested")
+	bus.fire("new_story_requested")
 	await process_frame
 	check(layer.screens.visible and layer.calendar.visible and not convo.visible, "demo day opens the calendar")
 	check(cal.slot_name() == "Morning" and state.time_left == 3, "morning, 3 time units")
@@ -338,8 +338,9 @@ func _calendar_checks() -> void:
 	check("Boba Date Location" in text and not ("Intro Scene" in text), "summary: only unlocks earned today")
 	check("1 won, 0 lost" in text and "Trivia:  1 of 1 right" in text and "Gifts given: 1" in text,
 		"summary: matches, trivia, gifts")
-	layer.summary.closed.emit()
-	check(not layer.screens.visible and main.menu.visible, "summary returns to the main menu")
+	check(layer.summary.title.text == "End of Day 1" and layer.summary.continue_button.text == "Start Day 2",
+		"day 1 summary offers Day 2")
+	await _multi_day_checks()
 	await _debug_checks()
 	await _second_character_checks()
 	await _real_date_check()
@@ -375,7 +376,7 @@ func _two_girls_checks() -> void:
 	check(cal.lock_reason("thai_tea_shop") == "needs Friendly (20) with Arisa", "her locations say what they need")
 
 	# Morning: Jessica's at the phở spot, Arisa's at the gym. Meet Arisa.
-	bus.fire("demo_day_requested")
+	bus.fire("new_story_requested")
 	await process_frame
 	check(layer.calendar.meters.get_child_count() == 2 and "Arisa" in layer.calendar.meters.get_child(0).label.text
 		+ layer.calendar.meters.get_child(1).label.text, "calendar shows a named meter per girl")
@@ -433,14 +434,14 @@ func _save_load_checks() -> void:
 	var saver: Node = root.get_node("SaveGame")
 	saver.path = "user://test_dating_save.json"
 	saver.delete_save()
-	bus.fire("continue_day_requested")  # no save yet -> a new day
+	bus.fire("continue_story_requested")  # no save yet -> a new day
 	await process_frame
 	check(layer.calendar.visible and saver.has_save(), "Continue with no save starts (and saves) a new day")
 	affection.add("arisa", 23, "test")
 	state.inventory.taro_boba = 0
 	state.char_state("arisa").trivia_answered.append("age")
 	cal.next_slot()  # autosaves
-	check(saver.describe().begins_with("Day 1 · Afternoon"), "save description: " + saver.describe())
+	check(saver.describe().begins_with("Day 1 of 3 · Afternoon"), "save description: " + saver.describe())
 	# Change things (without advancing time, which would autosave), then load the save back.
 	affection.add("arisa", 50, "test")
 	state.slot_index = 3
@@ -454,7 +455,7 @@ func _save_load_checks() -> void:
 		"unlocks, trivia and inventory restored")
 	check(cal.location_unlocked("thai_tea_shop"), "loaded unlocks open her location")
 	layer.hide_all()
-	bus.fire("continue_day_requested")
+	bus.fire("continue_story_requested")
 	await process_frame
 	check(layer.calendar.visible and cal.slot_name() == "Afternoon" and "Welcome back" in
 		layer.calendar.message_label.text, "Continue Day resumes the saved day")
@@ -464,7 +465,7 @@ func _save_load_checks() -> void:
 	cal.next_slot(); cal.next_slot(); cal.next_slot()
 	await process_frame
 	layer.hide_all()
-	bus.fire("continue_day_requested")
+	bus.fire("continue_story_requested")
 	await process_frame
 	check(layer.summary.visible and cal.day_over, "continuing a finished day shows its summary")
 	saver.delete_save()
@@ -473,7 +474,7 @@ func _save_load_checks() -> void:
 
 ## After the small-talk exchanges run out, Talk moves on to one-line facts.
 func _fact_line_check() -> void:
-	bus.fire("demo_day_requested")
+	bus.fire("new_story_requested")
 	await process_frame
 	layer.calendar.location_buttons.pho_spot.pressed.emit()
 	await _drain()
@@ -497,7 +498,7 @@ func _real_date_check() -> void:
 		recs[e] = func(_i): seen[e] = seen.get(e, 0) + 1
 		bus.connect(e, recs[e])
 	main.CPU_DELAY = 0.0
-	bus.fire("demo_day_requested")
+	bus.fire("new_story_requested")
 	await process_frame
 	layer.calendar.location_buttons.pho_spot.pressed.emit()
 	await _drain()
@@ -526,6 +527,45 @@ func _real_date_check() -> void:
 		bus.disconnect(e, recs[e])
 
 
+## Days 2 and 3: a new morning, daily gifts, per-day stats, and the ending.
+func _multi_day_checks() -> void:
+	var aff_before: int = affection.value("jessica")
+	var answered: Array = state.char_state("jessica").trivia_answered.duplicate()
+	var pho_before: int = state.inventory.get("pho_takeout", 0)
+	layer.summary.continue_button.pressed.emit()
+	await process_frame
+	check(state.day == 2 and cal.slot_name() == "Morning" and state.time_left == 3
+		and layer.calendar.visible and not cal.day_over, "Day 2 starts in the morning")
+	check(layer.calendar.title_label.text == "Day 2 of 3  ·  Morning", "calendar shows the day")
+	check(affection.value("jessica") == aff_before and state.char_state("jessica").trivia_answered == answered,
+		"affection and answered trivia carry over")
+	check(state.inventory.get("pho_takeout", 0) == pho_before + 1 and state.inventory.get("jasmine_garland", 0) >= 1,
+		"daily gifts arrive each morning")
+	check(state.day_log.is_empty() and state.char_state("jessica").start_affection == aff_before,
+		"day stats reset each morning")
+	check(state.match_record.wins == 1, "story match record carries over")
+	# Day 2: wait it out -> summary -> Day 3 -> final summary.
+	for i in 4:
+		layer.calendar.wait_pressed.emit()
+	await process_frame
+	check(layer.summary.visible and layer.summary.title.text == "End of Day 2"
+		and "Date matches today:  0 won, 0 lost" in layer.summary.body.text, "day 2 summary shows day 2 only")
+	layer.summary.continue_button.pressed.emit()
+	await process_frame
+	check(state.day == 3 and cal.is_final_day(), "Day 3")
+	for i in 4:
+		layer.calendar.wait_pressed.emit()
+	await process_frame
+	check(cal.story_over() and layer.summary.title.text == "The End"
+		and layer.summary.continue_button.text == "Back to main menu"
+		and "Over the whole story" in layer.summary.body.text
+		and ("Jessica: affection 0 → %d" % aff_before) in layer.summary.body.text, "final summary")
+	cal.start_next_day()
+	check(state.day == 3, "no Day 4")
+	layer.summary.continue_button.pressed.emit()
+	check(not layer.screens.visible and main.menu.visible, "the ending returns to the main menu")
+
+
 func _debug_checks() -> void:
 	var dbg = layer.debug_panel
 	var key := InputEventKey.new()
@@ -536,7 +576,7 @@ func _debug_checks() -> void:
 	for i in dbg.character_select.item_count:
 		if dbg.character_select.get_item_text(i) == "jessica":
 			dbg.character_select.select(i)
-	bus.fire("demo_day_requested")
+	bus.fire("new_story_requested")
 	await process_frame
 	var reached := []
 	var on_reached := func(i): reached.append(i.stage.label)
@@ -579,7 +619,7 @@ func _second_character_checks() -> void:
 	f.close()
 	check(characters.load_character("user://test_chars/mai.json") == "mai", "new character registers")
 	cal.schedule.characters["mai"] = {"morning": "pho_spot"}
-	bus.fire("demo_day_requested")
+	bus.fire("new_story_requested")
 	await process_frame
 	check(cal.characters_at("pho_spot").has("mai"), "schedule entry places her")
 	check(layer.calendar.meters.get_child_count() >= 1, "calendar meters")

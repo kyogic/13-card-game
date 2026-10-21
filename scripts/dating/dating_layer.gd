@@ -36,7 +36,7 @@ func _init() -> void:
 	conversation.left.connect(_show_calendar)
 	screens.add_child(conversation)
 	summary = SummaryScreen.new()
-	summary.closed.connect(hide_all)
+	summary.closed.connect(_on_summary_closed)
 	screens.add_child(summary)
 
 	# During a date: her speech bubble (top-left) and affection meter (under her name).
@@ -57,13 +57,13 @@ func _init() -> void:
 
 
 func _ready() -> void:
-	EventBus.demo_day_requested.connect(func(_info): start_day())
+	EventBus.new_story_requested.connect(func(_info): start_story())
 	EventBus.date_requested.connect(_on_date_requested)
 	EventBus.date_closed.connect(_on_date_closed)
 	EventBus.match_ended.connect(_on_match_ended)
 	EventBus.time_advanced.connect(_on_time_advanced)
 	EventBus.day_ended.connect(_on_day_ended)
-	EventBus.continue_day_requested.connect(func(_info): continue_day())
+	EventBus.continue_story_requested.connect(func(_info): continue_story())
 	hide_all()
 
 
@@ -72,19 +72,19 @@ func hide_all() -> void:
 	date_meter.visible = false
 
 
-func start_day() -> void:
-	Calendar.start_day()
+func start_story() -> void:
+	Calendar.start_story()
 	var names: Array = Characters.ids().map(func(id): return Characters.profile(id).first_name())
-	calendar.show_message("A free day. %s are out there somewhere, but you can only be in one place at a time."
-		% " and ".join(names))
+	calendar.show_message("%d days. %s are out there somewhere, but you can only be in one place at a time."
+		% [Calendar.days(), " and ".join(names)])
 	SaveGame.save_game()
 	_show_calendar()
 
 
-## Loads the saved day (or starts a new one if there is none).
-func continue_day() -> void:
+## Loads the saved story (or starts a new one if there is none).
+func continue_story() -> void:
 	if not SaveGame.load_game():
-		start_day()
+		start_story()
 		return
 	if Calendar.day_over:
 		_show_summary()
@@ -160,15 +160,15 @@ func _on_match_ended(info: Dictionary) -> void:
 		return
 	var won: bool = info.winner == "player"
 	GameState.match_record["wins" if won else "losses"] += 1
-	GameState.log_event("match", "%s the date match %d–%d." % ["Won" if won else "Lost",
-		info.score[0], info.score[1]])
+	GameState.log_event("match_won" if won else "match_lost", "%s the date match %d–%d." % [
+		"Won" if won else "Lost", info.score[0], info.score[1]])
 
 
 func _on_date_closed(info: Dictionary) -> void:
 	GameState.in_date = false
 	date_meter.visible = false
 	if not info.get("completed", true):
-		GameState.log_event("match", "Left the date early.")
+		GameState.log_event("date_left", "Left the date early.")
 	screens.visible = true
 	Calendar.end_slot()  # a date uses up the rest of the slot
 	if Calendar.day_over:
@@ -188,7 +188,18 @@ func _show_summary() -> void:
 	calendar.visible = false
 	conversation.visible = false
 	summary.visible = true
-	summary.refresh()
+	summary.refresh(Calendar.is_final_day())
+
+
+## "Start Day N" after a day's summary, or back to the menu when the story is over.
+func _on_summary_closed() -> void:
+	if Calendar.story_over():
+		hide_all()
+		return
+	Calendar.start_next_day()
+	calendar.show_message("Day %d. A new morning." % GameState.day)
+	SaveGame.save_game()
+	_show_calendar()
 
 
 func _input(event: InputEvent) -> void:

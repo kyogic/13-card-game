@@ -39,7 +39,7 @@ func _init() -> void:
 
 	col.add_child(_label("Time", Color.WHITE))
 	var time_row := HBoxContainer.new()
-	time_row.add_child(_button("Start day", func(): EventBus.fire("demo_day_requested")))
+	time_row.add_child(_button("New story", func(): EventBus.fire("new_story_requested")))
 	time_row.add_child(_button("Next slot", func(): Calendar.next_slot()))
 	col.add_child(time_row)
 

@@ -6,6 +6,8 @@ signal closed
 const Character := preload("res://scripts/character.gd")
 
 var body: Label
+var title: Label
+var continue_button: Button
 
 
 func _init() -> void:
@@ -21,8 +23,7 @@ func _init() -> void:
 	col.custom_minimum_size = Vector2(700, 0)
 	col.add_theme_constant_override("separation", 14)
 	center.add_child(col)
-	var title := Label.new()
-	title.text = "End of the Day"
+	title = Label.new()
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 44)
 	title.add_theme_color_override("font_color", Color(1, 0.85, 0.4))
@@ -31,15 +32,17 @@ func _init() -> void:
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.add_theme_font_size_override("font_size", 19)
 	col.add_child(body)
-	var back := Button.new()
-	back.text = "Back to main menu"
-	back.add_theme_font_size_override("font_size", 22)
-	back.pressed.connect(func(): closed.emit())
-	col.add_child(back)
+	continue_button = Button.new()
+	continue_button.add_theme_font_size_override("font_size", 22)
+	continue_button.pressed.connect(func(): closed.emit())
+	col.add_child(continue_button)
 
 
-func refresh() -> void:
-	var lines := ["Day %d is over." % GameState.day, ""]
+## `final`: the last day of the story, which also shows totals for the whole story.
+func refresh(final := false) -> void:
+	title.text = "The End" if final else "End of Day %d" % GameState.day
+	continue_button.text = "Back to main menu" if final else "Start Day %d" % (GameState.day + 1)
+	var lines := ["Day %d of %d is over." % [GameState.day, Calendar.days()], ""]
 	for id in Characters.ids():
 		var profile = Characters.profile(id)
 		var st: Dictionary = GameState.char_state(id)
@@ -53,8 +56,17 @@ func refresh() -> void:
 		lines.append("    Unlocks earned: %s" % (", ".join(earned.map(func(u): return Character.pretty(u)))
 			if not earned.is_empty() else "none"))
 		lines.append("")
-	lines.append("Date matches:  %d won, %d lost" % [GameState.match_record.wins, GameState.match_record.losses])
+	lines.append("Date matches today:  %d won, %d lost" % [GameState.count_log("match_won"),
+		GameState.count_log("match_lost")])
 	var right := GameState.count_log("trivia_correct")
 	lines.append("Trivia:  %d of %d right   ·   Talks: %d   ·   Gifts given: %d" % [right,
 		right + GameState.count_log("trivia_wrong"), GameState.count_log("talk"), GameState.count_log("gift")])
+	if final:
+		lines.append("")
+		lines.append("Over the whole story")
+		for id in Characters.ids():
+			var st: Dictionary = GameState.char_state(id)
+			lines.append("    %s: affection %d → %d, %s" % [Characters.profile(id).first_name(),
+				st.story_start_affection, st.affection, Characters.profile(id).stage(st.affection).get("label", "")])
+		lines.append("    Date matches: %d won, %d lost" % [GameState.match_record.wins, GameState.match_record.losses])
 	body.text = "\n".join(lines)

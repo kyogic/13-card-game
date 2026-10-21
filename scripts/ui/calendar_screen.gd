@@ -88,7 +88,7 @@ func show_message(text: String) -> void:
 
 
 func refresh() -> void:
-	title_label.text = "Day %d  ·  %s" % [GameState.day, Calendar.slot_name()]
+	title_label.text = "Day %d of %d  ·  %s" % [GameState.day, Calendar.days(), Calendar.slot_name()]
 	time_label.text = "Time left this %s: %d / %d" % [Calendar.slot_name().to_lower(), GameState.time_left,
 		Calendar.units_per_slot()]
 	for id in location_buttons:

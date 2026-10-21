@@ -6,8 +6,17 @@ A playable prototype of the Vietnamese card game **Tiến Lên** built with **Go
 - **4 Players:** you against 3 CPU opponents, full 52-card deck, 13 cards each.
 - **2 Players:** you against 1 CPU, half the deck. 26 cards are dealt (13 each) and the rest stay out of play.
 
-## Demo Day (dating layer)
-Press **New Day** on the main menu, or **Continue Day** to resume your saved day.
+## Menus
+- **Story Mode:** the dating sim. Choose **New Story** or **Continue Story**.
+- **Quickplay:** straight into a card game, either 4 players against 3 CPUs, or 2 players against Jessica (best of 3, earns coins).
+- **Wardrobe**, plus the power-up and music toggles, are on the main page. Power-ups apply in both modes.
+
+## Story Mode (dating layer)
+The story lasts **3 days**, each with Morning, Afternoon, Evening and Night.
+- **Carried between days:** affection, unlocks and answered trivia.
+- **Each new morning:** a few more gifts (`daily_gifts` in `data/story.json`).
+- **After each day:** a summary of that day, with a **Start Day N** button.
+- **After Day 3:** the summary also shows totals for the whole story.
 
 There are two girls to pursue: **Jessica** and **Arisa**. In every part of the day they're in different places, so going to see one means missing the other:
 
@@ -20,8 +29,8 @@ There are two girls to pursue: **Jessica** and **Arisa**. In every part of the d
 
 **Saving:**
 - The day autosaves at the start of each new slot and when the day ends. The calendar also has a **Save game** button.
-- **Continue Day** loads the save. A finished day opens its summary.
-- The save is one slot in `user://dating_save.json`. Coins and outfits are saved separately, in `user://save.cfg`.
+- **Continue Story** loads the save. If you saved at the end of a day, it opens that day's summary.
+- The save is one slot in `user://dating_save.json`, holding the whole story. Coins and outfits are saved separately, in `user://save.cfg`.
 - Coins were reset to 0 once with this update; unlocked outfits were kept.
 
 You have one day with four parts: Morning, Afternoon, Evening and Night. In each part, pick where to go.
@@ -59,7 +68,7 @@ Some places stay locked until her affection reaches a stage. When the day ends, 
 | Day state, in memory only, with `to_dict`/`from_dict` for a future save | `scripts/core/game_state.gd` |
 | Character registry | `scripts/dating/character_db.gd`, which loads every `data/characters/*.json` and optional `data/talk/<id>.json` |
 | Affection and stage unlocks | `scripts/dating/affection_system.gd` |
-| Day, slots, schedule, time costs, locks | `scripts/dating/calendar.gd`, using `data/demo_day.json` and `data/schedule.json` |
+| Day, slots, schedule, time costs, locks | `scripts/dating/calendar.gd`, using `data/story.json` and `data/schedule.json` |
 | Screens | `scripts/ui/`: calendar, conversation, dialogue box (typewriter + subtitles), reaction bubble, affection meter, summary, debug panel |
 | Ties the screens together | `scripts/dating/dating_layer.gd` |
 | Root scene (card game with the dating layer on top) | `scenes/app.tscn` |

@@ -1,17 +1,18 @@
 extends Node
-## The day: time slots (data/demo_day.json), where each character is in each slot
-## (data/schedule.json), time costs (tuning.json -> time) and location locks.
+## The story's calendar: several days (data/story.json), each split into time slots;
+## where each character is per slot (data/schedule.json, same every day); time costs
+## (tuning.json -> time) and location locks.
 
-const DEMO_DAY_PATH := "res://data/demo_day.json"
+const STORY_PATH := "res://data/story.json"
 const SCHEDULE_PATH := "res://data/schedule.json"
 
-var demo_day: Dictionary = {}
+var story: Dictionary = {}
 var schedule: Dictionary = {}
-var day_over := false
+var day_over := false          # the current day's slots are used up (summary showing)
 
 
 func _init() -> void:
-	demo_day = _load(DEMO_DAY_PATH)
+	story = _load(STORY_PATH)
 	schedule = _load(SCHEDULE_PATH)
 
 
@@ -20,21 +21,54 @@ func _load(path: String) -> Dictionary:
 	return parsed if parsed is Dictionary else {}
 
 
-func start_day() -> void:
-	GameState.reset(demo_day.get("starter_inventory", {}))
-	GameState.day = demo_day.get("day", 1)
+func days() -> int:
+	return int(story.get("days", 1))
+
+
+## Day 1 of a new story: fresh state and the starter gifts.
+func start_story() -> void:
+	GameState.reset(story.get("starter_inventory", {}))
+	GameState.day = 1
 	for id in Characters.ids():
 		Affection.ensure(id)
-		GameState.char_state(id).start_affection = Affection.value(id)
-		GameState.char_state(id).start_unlocks = GameState.char_state(id).unlocks.duplicate()
+		GameState.char_state(id).story_start_affection = Affection.value(id)
+	_begin_day()
+
+
+## After a day's summary: move to the next morning (adds that day's gifts).
+func start_next_day() -> void:
+	if not day_over or is_final_day():
+		return
+	GameState.day += 1
+	var gifts: Dictionary = story.get("daily_gifts", {})
+	for g in gifts:
+		GameState.inventory[g] = GameState.inventory.get(g, 0) + int(gifts[g])
+	_begin_day()
+
+
+func _begin_day() -> void:
+	for id in Characters.ids():
+		var st: Dictionary = GameState.char_state(id)
+		st.start_affection = Affection.value(id)
+		st.start_unlocks = st.unlocks.duplicate()
+	GameState.day_log = []
 	day_over = false
 	GameState.slot_index = 0
+	GameState.location = ""
 	GameState.time_left = units_per_slot()
-	EventBus.fire("time_advanced", {"slot_index": 0, "time_left": GameState.time_left})
+	EventBus.fire("time_advanced", {"slot_index": 0, "time_left": GameState.time_left, "day": GameState.day})
+
+
+func is_final_day() -> bool:
+	return GameState.day >= days()
+
+
+func story_over() -> bool:
+	return day_over and is_final_day()
 
 
 func slots() -> Array:
-	return demo_day.get("slots", [])
+	return story.get("slots", [])
 
 
 func slot() -> Dictionary:
@@ -78,10 +112,11 @@ func next_slot() -> void:
 	if GameState.slot_index >= slots().size():
 		day_over = true
 		GameState.time_left = 0
-		EventBus.fire("day_ended", {"day": GameState.day})
+		EventBus.fire("day_ended", {"day": GameState.day, "final": is_final_day()})
 		return
 	GameState.time_left = units_per_slot()
-	EventBus.fire("time_advanced", {"slot_index": GameState.slot_index, "time_left": GameState.time_left})
+	EventBus.fire("time_advanced", {"slot_index": GameState.slot_index, "time_left": GameState.time_left,
+		"day": GameState.day})
 
 
 # --- Locations ----------------------------------------------------------------------

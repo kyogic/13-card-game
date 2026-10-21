@@ -1,5 +1,5 @@
 extends Node
-## In-memory state of the dating layer for the current day. Plain data only, so
+## State of the dating layer for the current story (several days). Plain data only, so
 ## save/load can later be added with to_dict() / from_dict(). Not saved yet.
 
 var day := 1
@@ -11,8 +11,8 @@ var in_date := false           # a Tiến Lên date is being played
 ## fact ids), soft_facts_seen, start_affection, start_unlocks}
 var characters := {}
 var inventory := {}            # gift id -> count
-var match_record := {"wins": 0, "losses": 0}
-var day_log: Array = []        # [{kind, text}] for the end-of-day summary
+var match_record := {"wins": 0, "losses": 0}  # whole story
+var day_log: Array = []        # [{kind, text}] for the end-of-day summary (cleared each morning)
 var settings := {"subtitles": true}
 
 
@@ -31,7 +31,8 @@ func reset(starter_inventory: Dictionary = {}) -> void:
 func char_state(id: String) -> Dictionary:
 	if not characters.has(id):
 		characters[id] = {"affection": 0, "unlocks": [], "stages": [], "trivia_answered": [],
-			"talks_seen": [], "soft_facts_seen": [], "start_affection": 0, "start_unlocks": []}
+			"talks_seen": [], "soft_facts_seen": [], "start_affection": 0, "start_unlocks": [],
+			"story_start_affection": 0}
 	return characters[id]
 
 
@@ -59,7 +60,7 @@ func from_dict(d: Dictionary) -> void:
 		var st: Dictionary = char_state(id)  # defaults for keys older saves lack
 		for key in d.characters[id]:
 			st[key] = d.characters[id][key]
-		for key in ["affection", "start_affection"]:
+		for key in ["affection", "start_affection", "story_start_affection"]:
 			st[key] = int(st[key])
 	inventory = {}
 	for g in d.get("inventory", {}):
