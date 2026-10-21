@@ -202,8 +202,9 @@ func _dialogue_checks() -> void:
 		if b.text == q.answer:
 			b.pressed.emit()
 	await process_frame
-	check(affection.value("jessica") == 12 and state.char_state("jessica").trivia_answered == [question],
-		"quiz correct +7")
+	check(affection.value("jessica") == 12 and state.char_state("jessica").trivia_answered == [q.id],
+		"quiz correct +7 (recorded by id)")
+	check(q.get("min_affection", 0) <= 5, "only ungated questions at low affection")
 	await _drain()
 	check(state.time_left == 1, "quiz costs 1")
 	check(convo.buttons.talk.disabled == false and convo.buttons.quiz.disabled == false, "1 unit still affords talk")
@@ -259,7 +260,30 @@ func _dialogue_checks() -> void:
 var cal: Node
 
 
+## Data checks for the expanded profile: gating, soft facts, fact lines, coverage.
+func _profile_content_checks() -> void:
+	var j = characters.profile("jessica")
+	check(j.trivia().size() == 26 and j.soft_facts().size() == 8, "26 trivia, 8 soft facts")
+	check(j.trivia_available(0).size() == 18 and j.trivia_available(45).size() == 22
+		and j.trivia_available(70).size() == 26, "trivia gated by min_affection")
+	var taught := {}
+	for e in characters.talk("jessica") + characters.fact_lines("jessica"):
+		for t in e.teaches:
+			taught[t] = true
+	for f in j.soft_facts():
+		taught[f.id] = true
+	var untaught: Array = j.trivia().filter(func(q): return not taught.has(q.id)).map(func(q): return q.id)
+	check(untaught.is_empty(), "every trivia answer is taught somewhere: missing %s" % [untaught])
+	# The line that teaches the nickname keeps "anh" even before it's unlocked.
+	var nick_line: Dictionary = characters.fact_lines("jessica").filter(func(f): return f.id == "nickname")[0].lines[0]
+	check("anh" in j.normalize(nick_line, []).text, "nickname fact keeps 'anh'")
+	check(not ("anh" in j.normalize(j.soft_facts().filter(func(f): return f.id == "biggest_fear")[0], []).text),
+		"other lines still drop 'anh' until unlocked")
+	check(j.normalize(j.soft_facts()[0], []).text == j.soft_facts()[0].reveal, "soft facts read their 'reveal'")
+
+
 func _calendar_checks() -> void:
+	_profile_content_checks()
 	# 37 affection -> Curious: the boba shop is open, and that's where she is this afternoon.
 	check(cal.location_unlocked("boba_shop") and not layer.calendar.location_buttons.boba_shop.disabled,
 		"Curious unlocks the boba shop")
@@ -272,11 +296,19 @@ func _calendar_checks() -> void:
 	check(convo.visible and convo.location_id == "boba_shop", "she's at the boba shop in the afternoon")
 	await _drain()
 	# Two talks use the last 2 units; the slot rolls over and the calendar comes back.
-	for i in 2:
-		convo.buttons.talk.pressed.emit()
-		await _drain()
-		_choices()[1].pressed.emit()
-		await _drain()
+	# At 37 affection her first talk here is a soft fact (favorite food, unlocked at 20).
+	convo.buttons.talk.pressed.emit()
+	await process_frame
+	check("Bún bò Huế" in convo.dialogue.text_label.text and _choices().is_empty(), "soft fact revealed at 20+")
+	await _drain()
+	check(convo.dialogue.text_label.text in characters.profile("jessica").data.dialogue.on_soft_fact_revealed,
+		"she reacts after opening up")
+	await _drain()
+	check(state.char_state("jessica").soft_facts_seen == ["favorite_food"], "soft fact recorded")
+	convo.buttons.talk.pressed.emit()
+	await _drain()
+	_choices()[1].pressed.emit()
+	await _drain()
 	await process_frame
 	check(cal.slot_name() == "Evening" and layer.calendar.visible and "evening" in
 		layer.calendar.message_label.text, "running out of time moves to the evening")
@@ -307,6 +339,25 @@ func _calendar_checks() -> void:
 	await _debug_checks()
 	await _second_character_checks()
 	await _real_date_check()
+	await _fact_line_check()
+
+
+## After the small-talk exchanges run out, Talk moves on to one-line facts.
+func _fact_line_check() -> void:
+	bus.fire("demo_day_requested")
+	await process_frame
+	layer.calendar.location_buttons.pho_spot.pressed.emit()
+	await _drain()
+	var st: Dictionary = state.char_state("jessica")
+	for ex in characters.talk("jessica"):
+		st.talks_seen.append(ex.id)
+	convo.refresh()
+	convo.buttons.talk.pressed.emit()
+	await process_frame
+	check("cà phê sữa đá" in convo.dialogue.text_label.text and _choices().is_empty(), "fact line after exchanges")
+	await _drain()
+	check(st.talks_seen.has("morning_drink") and state.time_left == 2, "fact line recorded and costs talk time")
+	layer.hide_all()
 
 
 ## Plays an actual Tiến Lên date to the end (her AI vs. Hint for you) from the calendar.

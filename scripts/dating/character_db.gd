@@ -7,7 +7,8 @@ const CHAR_DIR := "res://data/characters/"
 const TALK_DIR := "res://data/talk/"
 
 var profiles := {}             # id -> Character
-var talks := {}                # id -> Array of small-talk exchanges
+var talks := {}                # id -> Array of small-talk exchanges (with choices)
+var facts := {}                # id -> Array of one-off fact lines (no choices)
 
 
 func _init() -> void:
@@ -27,6 +28,7 @@ func load_character(path: String, talk_dir := TALK_DIR) -> String:
 		var parsed = JSON.parse_string(FileAccess.get_file_as_string(talk_path))
 		if parsed is Dictionary:
 			talks[profile.id()] = parsed.get("exchanges", [])
+			facts[profile.id()] = parsed.get("facts", [])
 	return profile.id()
 
 
@@ -40,3 +42,7 @@ func profile(id: String):
 
 func talk(id: String) -> Array:
 	return talks.get(id, [])
+
+
+func fact_lines(id: String) -> Array:
+	return facts.get(id, [])

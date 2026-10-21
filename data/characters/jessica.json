@@ -72,8 +72,32 @@
       "disliked": -5
     }
   },
+  "profile": {
+    "age": 24,
+    "birthday": "March 14",
+    "zodiac": "Pisces",
+    "height": "5'3\"",
+    "hobby": "EDM festivals",
+    "music": "Bass and dubstep",
+    "favorite_food": "Bún bò Huế",
+    "morning_drink": "Cà phê sữa đá",
+    "boba_order": "Taro with lychee jelly",
+    "favorite_color": "Black",
+    "car": "Lowered white Honda Civic",
+    "pet": "Pomeranian named Bơ",
+    "favorite_holiday": "Tết",
+    "lucky_number": 9,
+    "biggest_fear": "Ghosts (won't watch horror alone)",
+    "hidden_talent": "Singing Vietnamese ballads at karaoke",
+    "secret_favorite_movies": "Rom-coms",
+    "parents_wanted_her_to_be": "A pharmacist",
+    "pet_peeve": "People who show up late",
+    "ideal_date": "Late-night food crawl at the night market",
+    "favorite_song": "An old Vietnamese ballad her bà ngoại used to sing"
+  },
   "trivia": [
     {
+      "id": "boba_order",
       "question": "What's my go-to boba order?",
       "answer": "Taro with lychee jelly",
       "wrong": [
@@ -83,15 +107,18 @@
       ]
     },
     {
+      "id": "tattoo_meaning",
       "question": "What do my butterfly tattoos mean?",
       "answer": "Starting over",
       "wrong": [
         "My favorite animal",
         "A dare",
         "My ex"
-      ]
+      ],
+      "min_affection": 70
     },
     {
+      "id": "card_teacher",
       "question": "Who taught me Tiến Lên?",
       "answer": "My cô and chú at Tết",
       "wrong": [
@@ -101,6 +128,7 @@
       ]
     },
     {
+      "id": "dream",
       "question": "What's my dream?",
       "answer": "Opening my own lash studio",
       "wrong": [
@@ -110,12 +138,230 @@
       ]
     },
     {
+      "id": "bracelet",
       "question": "Whose bracelet do I wear?",
       "answer": "My bà ngoại's",
       "wrong": [
         "My mom's",
         "My best friend's",
         "I bought it myself"
+      ],
+      "min_affection": 70
+    },
+    {
+      "id": "age",
+      "question": "How old am I?",
+      "answer": "24",
+      "wrong": [
+        "22",
+        "26",
+        "28"
+      ]
+    },
+    {
+      "id": "birthday",
+      "question": "When's my birthday?",
+      "answer": "March 14",
+      "wrong": [
+        "February 14",
+        "July 4",
+        "October 31"
+      ]
+    },
+    {
+      "id": "zodiac",
+      "question": "What's my sign?",
+      "answer": "Pisces",
+      "wrong": [
+        "Scorpio",
+        "Leo",
+        "Aries"
+      ]
+    },
+    {
+      "id": "height",
+      "question": "How tall am I?",
+      "answer": "5'3\"",
+      "wrong": [
+        "5'0\"",
+        "5'5\"",
+        "5'7\""
+      ]
+    },
+    {
+      "id": "hobby",
+      "question": "What do I do on my days off?",
+      "answer": "Hit EDM festivals",
+      "wrong": [
+        "Go hiking",
+        "Play video games",
+        "Bake"
+      ]
+    },
+    {
+      "id": "music",
+      "question": "What kind of music do I blast in my car?",
+      "answer": "Bass and dubstep",
+      "wrong": [
+        "Country",
+        "K-pop",
+        "Jazz"
+      ]
+    },
+    {
+      "id": "favorite_song",
+      "question": "What's my favorite song? Like, actually.",
+      "answer": "An old Vietnamese ballad my bà ngoại used to sing",
+      "wrong": [
+        "A festival EDM anthem",
+        "A K-pop hit",
+        "A hip-hop track"
+      ],
+      "min_affection": 70
+    },
+    {
+      "id": "favorite_food",
+      "question": "What's my favorite food?",
+      "answer": "Bún bò Huế",
+      "wrong": [
+        "Ramen",
+        "Hot pot",
+        "Bánh mì"
+      ],
+      "min_affection": 20
+    },
+    {
+      "id": "morning_drink",
+      "question": "What do I drink every morning?",
+      "answer": "Cà phê sữa đá",
+      "wrong": [
+        "Matcha latte",
+        "Green juice",
+        "Energy drink"
+      ]
+    },
+    {
+      "id": "favorite_color",
+      "question": "What's my favorite color?",
+      "answer": "Black",
+      "wrong": [
+        "Pink",
+        "Red",
+        "White"
+      ]
+    },
+    {
+      "id": "car",
+      "question": "What do I drive?",
+      "answer": "A lowered white Honda Civic",
+      "wrong": [
+        "A pink Jeep",
+        "A Tesla",
+        "I take the bus"
+      ]
+    },
+    {
+      "id": "pet",
+      "question": "What's my dog's name?",
+      "answer": "Bơ",
+      "wrong": [
+        "Mochi",
+        "Boba",
+        "Lucky"
+      ]
+    },
+    {
+      "id": "favorite_holiday",
+      "question": "What's my favorite holiday?",
+      "answer": "Tết",
+      "wrong": [
+        "Christmas",
+        "Halloween",
+        "Valentine's Day"
+      ]
+    },
+    {
+      "id": "lucky_number",
+      "question": "What's my lucky number?",
+      "answer": "9",
+      "wrong": [
+        "7",
+        "8",
+        "13"
+      ]
+    },
+    {
+      "id": "biggest_fear",
+      "question": "What am I secretly scared of?",
+      "answer": "Ghosts",
+      "wrong": [
+        "Spiders",
+        "Heights",
+        "Clowns"
+      ],
+      "min_affection": 45
+    },
+    {
+      "id": "hidden_talent",
+      "question": "What's my hidden talent?",
+      "answer": "Singing Vietnamese ballads at karaoke",
+      "wrong": [
+        "Breakdancing",
+        "Drawing",
+        "Speaking Korean"
+      ],
+      "min_affection": 45
+    },
+    {
+      "id": "secret_movies",
+      "question": "What movies do I secretly love?",
+      "answer": "Rom-coms",
+      "wrong": [
+        "Horror",
+        "Action",
+        "Documentaries"
+      ],
+      "min_affection": 45
+    },
+    {
+      "id": "parents_wish",
+      "question": "What did my parents want me to be?",
+      "answer": "A pharmacist",
+      "wrong": [
+        "A lawyer",
+        "An engineer",
+        "A teacher"
+      ],
+      "min_affection": 70
+    },
+    {
+      "id": "pet_peeve",
+      "question": "What's my biggest pet peeve?",
+      "answer": "People who show up late",
+      "wrong": [
+        "Loud chewing",
+        "Bad tippers",
+        "Slow walkers"
+      ]
+    },
+    {
+      "id": "ideal_date",
+      "question": "What's my ideal date?",
+      "answer": "Late-night food crawl at the night market",
+      "wrong": [
+        "Fancy steakhouse",
+        "Movie night at home",
+        "Bowling"
+      ]
+    },
+    {
+      "id": "nickname",
+      "question": "What do I call you once we're close?",
+      "answer": "Anh",
+      "wrong": [
+        "Babe",
+        "Bro",
+        "Your full name"
       ]
     }
   ],
@@ -234,6 +480,10 @@
         "translation": "Better luck next time, anh (what she calls a guy she's close to). I'll still let you buy the boba."
       }
     ],
+    "on_soft_fact_revealed": [
+      "...Why am I telling you this?",
+      "Okay, that's enough feelings for one day."
+    ],
     "on_trivia_correct": [
       "Okay... so you DO listen.",
       "Huh. Look at you, paying attention."
@@ -264,6 +514,52 @@
     "pho_spot",
     "night_market",
     "edm_festival"
+  ],
+  "soft_facts": [
+    {
+      "id": "favorite_song",
+      "min_affection": 70,
+      "reveal": "Everyone thinks it's some festival drop. It's not. It's this old ballad my bà ngoại used to sing while she cooked. I sang it at every family party growing up. Don't laugh.",
+      "translation": "Everyone thinks it's some festival drop. It's not. It's this old ballad my grandma used to sing while she cooked. I sang it at every family party growing up. Don't laugh."
+    },
+    {
+      "id": "hidden_talent",
+      "min_affection": 45,
+      "reveal": "I can actually sing. Like, sing sing. The aunties used to make me do it at every đám cưới. I just don't do it in front of people anymore.",
+      "translation": "I can actually sing. Like, sing sing. The aunties used to make me do it at every wedding. I just don't do it in front of people anymore."
+    },
+    {
+      "id": "bracelet",
+      "min_affection": 70,
+      "reveal": "This was my bà ngoại's. She gave it to me right before she passed. I haven't taken it off since.",
+      "translation": "This was my grandma's. She gave it to me right before she passed. I haven't taken it off since."
+    },
+    {
+      "id": "tattoo_meaning",
+      "min_affection": 70,
+      "reveal": "The butterflies? I got them the year I moved out and started over. Reminder that I'm allowed to change."
+    },
+    {
+      "id": "biggest_fear",
+      "min_affection": 45,
+      "reveal": "Okay, don't tell anyone, but I can't watch horror alone. I sleep with the light on after. Ghosts are real, anh."
+    },
+    {
+      "id": "secret_movies",
+      "min_affection": 45,
+      "reveal": "I cry at rom-coms. Every single one. Even the bad ones. Especially the bad ones."
+    },
+    {
+      "id": "parents_wish",
+      "min_affection": 70,
+      "reveal": "My parents wanted me to be a pharmacist. They still bring it up. That's why the studio matters so much to me. I want to prove this was the right call."
+    },
+    {
+      "id": "favorite_food",
+      "min_affection": 20,
+      "reveal": "Bún bò Huế is my favorite because my bà ngoại made it every Sunday. I still have her handwritten recipe, but mine never tastes the same.",
+      "translation": "Bún bò Huế (spicy beef noodle soup) is my favorite because my grandma made it every Sunday. I still have her handwritten recipe, but mine never tastes the same."
+    }
   ],
   "portrait": "res://assets/characters/jessica/default.png",
   "nickname_for_player": {

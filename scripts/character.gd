@@ -3,6 +3,8 @@ extends RefCounted
 ## stages, gifts, trivia and card-AI tuning. Pure data access; no game state.
 ##
 ## Dialogue entries may be plain strings or {"text": ..., "translation": ...}.
+## Soft facts use "reveal" instead of "text". An entry with "keep_nickname": true keeps
+## the player's nickname even before it is unlocked (e.g. a line that teaches it).
 
 ## Display names for ids whose plain-English capitalisation would lose the Vietnamese.
 const DISPLAY_NAMES := {"ca_phe_sua_da": "Cà phê sữa đá", "pho_takeout": "Phở takeout"}
@@ -58,8 +60,10 @@ func line_entry(event: String, unlocks: Array = []) -> Dictionary:
 ## Turns a string or {text, translation} entry into a dictionary, applying the nickname rule.
 func normalize(entry, unlocks: Array = []) -> Dictionary:
 	var result: Dictionary = entry.duplicate() if entry is Dictionary else {"text": str(entry)}
+	if result.has("reveal") and not result.has("text"):
+		result["text"] = result.reveal
 	var nick: Dictionary = data.get("nickname_for_player", {})
-	if not nick.is_empty() and not unlocks.has(nick.get("unlock", "")):
+	if not nick.is_empty() and not unlocks.has(nick.get("unlock", "")) and not result.get("keep_nickname", false):
 		var re := RegEx.new()
 		re.compile(",? %s\\b" % nick.word)
 		for key in ["text", "translation"]:
@@ -131,6 +135,21 @@ static func pretty(gift_id: String) -> String:
 
 func trivia() -> Array:
 	return data.get("trivia", [])
+
+
+## Stable id for a trivia question (older profiles have no "id"; fall back to the text).
+static func trivia_id(q: Dictionary) -> String:
+	return q.get("id", q.get("question", ""))
+
+
+## Trivia she'll ask at this affection (questions can have "min_affection").
+func trivia_available(affection: int) -> Array:
+	return trivia().filter(func(q): return affection >= q.get("min_affection", 0))
+
+
+## Personal things she only shares past an affection threshold: [{id, min_affection, reveal}].
+func soft_facts() -> Array:
+	return data.get("soft_facts", [])
 
 
 func date_locations() -> Array:

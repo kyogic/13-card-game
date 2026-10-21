@@ -3,84 +3,383 @@
   "exchanges": [
     {
       "id": "boba",
-      "teaches": "What's my go-to boba order?",
+      "teaches": [
+        "boba_order"
+      ],
       "lines": [
-        {"speaker": "jessica", "text": "Okay, important question. What's your boba order?"}
+        {
+          "speaker": "jessica",
+          "text": "Okay, important question. What's your boba order?"
+        }
       ],
       "choices": [
-        {"text": "Taro, obviously.", "quality": "good",
-         "reply": [{"speaker": "jessica", "text": "Okay, taste. Mine's taro with lychee jelly. Don't forget it."}]},
-        {"text": "Whatever's on special.", "quality": "neutral",
-         "reply": [{"speaker": "jessica", "text": "Boring. It's taro with lychee jelly for me, by the way."}]},
-        {"text": "Boba's kinda overrated.", "quality": "bad",
-         "reply": [{"speaker": "jessica", "text": "Trời ơi. Taro with lychee jelly. Educate yourself.",
-                    "translation": "Oh my god. Taro with lychee jelly. Educate yourself."}]}
+        {
+          "text": "Taro, obviously.",
+          "quality": "good",
+          "reply": [
+            {
+              "speaker": "jessica",
+              "text": "Okay, taste. Mine's taro with lychee jelly. Don't forget it."
+            }
+          ]
+        },
+        {
+          "text": "Whatever's on special.",
+          "quality": "neutral",
+          "reply": [
+            {
+              "speaker": "jessica",
+              "text": "Boring. It's taro with lychee jelly for me, by the way."
+            }
+          ]
+        },
+        {
+          "text": "Boba's kinda overrated.",
+          "quality": "bad",
+          "reply": [
+            {
+              "speaker": "jessica",
+              "text": "Trời ơi. Taro with lychee jelly. Educate yourself.",
+              "translation": "Oh my god. Taro with lychee jelly. Educate yourself."
+            }
+          ]
+        }
       ]
     },
     {
-      "id": "butterflies",
-      "teaches": "What do my butterfly tattoos mean?",
+      "id": "car",
+      "teaches": [
+        "car",
+        "music"
+      ],
       "lines": [
-        {"speaker": "jessica", "text": "You keep looking at my butterflies."},
-        {"speaker": "jessica", "text": "Go ahead. Ask."}
+        {
+          "speaker": "jessica",
+          "text": "You hear that bass? That's my Civic. Lowered, white, perfect."
+        },
+        {
+          "speaker": "jessica",
+          "text": "Bass and dubstep, windows down. That's the only way to drive."
+        }
       ],
       "choices": [
-        {"text": "What do they mean?", "quality": "good",
-         "reply": [{"speaker": "jessica", "text": "Change. I got them the year I moved out and started over."}]},
-        {"text": "They're cute.", "quality": "neutral",
-         "reply": [{"speaker": "jessica", "text": "Cute? They're about starting over. But okay, cute."}]},
-        {"text": "Did they hurt? Bet you cried.", "quality": "bad",
-         "reply": [{"speaker": "jessica", "text": "Wow. They're about starting over, actually. Rude."}]}
+        {
+          "text": "Turn it up.",
+          "quality": "good",
+          "reply": [
+            {
+              "speaker": "jessica",
+              "text": "See, you get it. Lowered white Civic gang."
+            }
+          ]
+        },
+        {
+          "text": "Isn't that bad for your ears?",
+          "quality": "neutral",
+          "reply": [
+            {
+              "speaker": "jessica",
+              "text": "Probably. Still not turning it down."
+            }
+          ]
+        },
+        {
+          "text": "Dubstep is just noise.",
+          "quality": "bad",
+          "reply": [
+            {
+              "speaker": "jessica",
+              "text": "Get out of my car. Respectfully."
+            }
+          ]
+        }
       ]
     },
     {
       "id": "tien_len",
-      "teaches": "Who taught me Tiến Lên?",
+      "teaches": [
+        "card_teacher"
+      ],
       "lines": [
-        {"speaker": "jessica", "text": "You know who taught me Tiến Lên?"},
-        {"speaker": "jessica", "text": "My cô and chú. Every Tết, lì xì money on the table, everybody yelling.",
-         "translation": "My aunt and uncle. Every Lunar New Year, red-envelope money on the table, everybody yelling."}
+        {
+          "speaker": "jessica",
+          "text": "You know who taught me Tiến Lên?"
+        },
+        {
+          "speaker": "jessica",
+          "text": "My cô and chú. Every Tết, lì xì money on the table, everybody yelling.",
+          "translation": "My aunt and uncle. Every Lunar New Year, red-envelope money on the table, everybody yelling."
+        }
       ],
       "choices": [
-        {"text": "So that's why you play so aggressive.", "quality": "good",
-         "reply": [{"speaker": "jessica", "text": "Exactly. At Tết, you play it safe, you go broke.",
-                    "translation": "Exactly. At Lunar New Year, you play it safe, you go broke."}]},
-        {"text": "Sounds loud.", "quality": "neutral",
-         "reply": [{"speaker": "jessica", "text": "So loud. Best nights of the year."}]},
-        {"text": "I learned from a YouTube video.", "quality": "bad",
-         "reply": [{"speaker": "jessica", "text": "...That explains a lot."}]}
+        {
+          "text": "So that's why you play so aggressive.",
+          "quality": "good",
+          "reply": [
+            {
+              "speaker": "jessica",
+              "text": "Exactly. At Tết, you play it safe, you go broke.",
+              "translation": "Exactly. At Lunar New Year, you play it safe, you go broke."
+            }
+          ]
+        },
+        {
+          "text": "Sounds loud.",
+          "quality": "neutral",
+          "reply": [
+            {
+              "speaker": "jessica",
+              "text": "So loud. Best nights of the year."
+            }
+          ]
+        },
+        {
+          "text": "I learned from a YouTube video.",
+          "quality": "bad",
+          "reply": [
+            {
+              "speaker": "jessica",
+              "text": "...That explains a lot."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dog",
+      "teaches": [
+        "pet"
+      ],
+      "lines": [
+        {
+          "speaker": "jessica",
+          "text": "Look. Look at him. This is Bơ.",
+          "translation": "Look. Look at him. This is Bơ (\"Avocado\")."
+        },
+        {
+          "speaker": "jessica",
+          "text": "Pomeranian. Ten pounds of attitude. Like his mom."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Bơ is perfect. I'd die for him.",
+          "quality": "good",
+          "reply": [
+            {
+              "speaker": "jessica",
+              "text": "Correct answer. He'd let you, too."
+            }
+          ]
+        },
+        {
+          "text": "Cute dog.",
+          "quality": "neutral",
+          "reply": [
+            {
+              "speaker": "jessica",
+              "text": "Cute? He's iconic. But okay."
+            }
+          ]
+        },
+        {
+          "text": "I'm more of a cat person.",
+          "quality": "bad",
+          "reply": [
+            {
+              "speaker": "jessica",
+              "text": "Thôi đi. Bơ heard that.",
+              "translation": "Stop it. Bơ heard that."
+            }
+          ]
+        }
       ]
     },
     {
       "id": "studio",
-      "teaches": "What's my dream?",
+      "teaches": [
+        "dream"
+      ],
       "lines": [
-        {"speaker": "jessica", "text": "Long day. Twelve clients."},
-        {"speaker": "jessica", "text": "Every set I do is a little more saved for my own studio."}
+        {
+          "speaker": "jessica",
+          "text": "Long day. Twelve clients."
+        },
+        {
+          "speaker": "jessica",
+          "text": "Every set I do is a little more saved for my own studio."
+        }
       ],
       "choices": [
-        {"text": "Your own lash studio? You'd crush that.", "quality": "good",
-         "reply": [{"speaker": "jessica", "text": "Right? Somewhere cute. My name on the door."}]},
-        {"text": "Do you like working for someone else?", "quality": "neutral",
-         "reply": [{"speaker": "jessica", "text": "It's fine. It's temporary. Opening my own lash studio is the dream."}]},
-        {"text": "Isn't that just, like, eyelashes?", "quality": "bad",
-         "reply": [{"speaker": "jessica", "text": "Just eyelashes? Watch me open a whole lash studio on 'just eyelashes.'"}]}
+        {
+          "text": "Your own lash studio? You'd crush that.",
+          "quality": "good",
+          "reply": [
+            {
+              "speaker": "jessica",
+              "text": "Right? Somewhere cute. My name on the door."
+            }
+          ]
+        },
+        {
+          "text": "Do you like working for someone else?",
+          "quality": "neutral",
+          "reply": [
+            {
+              "speaker": "jessica",
+              "text": "It's fine. It's temporary. Opening my own lash studio is the dream."
+            }
+          ]
+        },
+        {
+          "text": "Isn't that just, like, eyelashes?",
+          "quality": "bad",
+          "reply": [
+            {
+              "speaker": "jessica",
+              "text": "Just eyelashes? Watch me open a whole lash studio on 'just eyelashes.'"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "facts": [
+    {
+      "id": "morning_drink",
+      "teaches": [
+        "morning_drink"
+      ],
+      "lines": [
+        {
+          "speaker": "jessica",
+          "text": "Don't talk to me before my cà phê sữa đá. Every morning. Non-negotiable.",
+          "translation": "Don't talk to me before my Vietnamese iced coffee. Every morning. Non-negotiable."
+        }
       ]
     },
     {
-      "id": "bracelet",
-      "teaches": "Whose bracelet do I wear?",
-      "lines": [
-        {"speaker": "narrator", "text": "She keeps turning the little heart charm on her bracelet."},
-        {"speaker": "jessica", "text": "It was my bà ngoại's.", "translation": "It was my grandma's (my mom's mom)."}
+      "id": "age",
+      "teaches": [
+        "age"
       ],
-      "choices": [
-        {"text": "She must have meant a lot to you.", "quality": "good",
-         "reply": [{"speaker": "jessica", "text": "...Yeah. She did. Okay, enough of that."}]},
-        {"text": "It's pretty.", "quality": "neutral",
-         "reply": [{"speaker": "jessica", "text": "It's the only thing of hers I've got. So, yeah."}]},
-        {"text": "Looks kinda cheap.", "quality": "bad",
-         "reply": [{"speaker": "jessica", "text": "Thôi đi. Don't.", "translation": "Stop it. Don't."}]}
+      "lines": [
+        {
+          "speaker": "jessica",
+          "text": "I'm 24, by the way. Don't act like you didn't wonder."
+        }
+      ]
+    },
+    {
+      "id": "birthday",
+      "teaches": [
+        "birthday",
+        "zodiac"
+      ],
+      "lines": [
+        {
+          "speaker": "jessica",
+          "text": "My birthday's March 14. Pisces. Explains a lot, honestly."
+        }
+      ]
+    },
+    {
+      "id": "height",
+      "teaches": [
+        "height"
+      ],
+      "lines": [
+        {
+          "speaker": "jessica",
+          "text": "I'm 5'3\". Five-seven in platforms. Festival height."
+        }
+      ]
+    },
+    {
+      "id": "hobby",
+      "teaches": [
+        "hobby"
+      ],
+      "lines": [
+        {
+          "speaker": "jessica",
+          "text": "Days off? I'm at an EDM festival. Every time. Sleep is for Mondays."
+        }
+      ]
+    },
+    {
+      "id": "pet_peeve",
+      "teaches": [
+        "pet_peeve"
+      ],
+      "lines": [
+        {
+          "speaker": "jessica",
+          "text": "You know what I can't stand? People who show up late. Like, just say you're not coming."
+        }
+      ]
+    },
+    {
+      "id": "favorite_color",
+      "teaches": [
+        "favorite_color"
+      ],
+      "lines": [
+        {
+          "speaker": "jessica",
+          "text": "Everything I own is black. Favorite color. Not a phase."
+        }
+      ]
+    },
+    {
+      "id": "favorite_holiday",
+      "teaches": [
+        "favorite_holiday"
+      ],
+      "lines": [
+        {
+          "speaker": "jessica",
+          "text": "Tết is the best holiday. Food, lì xì, cards all night. Not even close.",
+          "translation": "Lunar New Year is the best holiday. Food, red envelopes, cards all night. Not even close."
+        }
+      ]
+    },
+    {
+      "id": "lucky_number",
+      "teaches": [
+        "lucky_number"
+      ],
+      "lines": [
+        {
+          "speaker": "jessica",
+          "text": "Nine's my lucky number. Nine always hits."
+        }
+      ]
+    },
+    {
+      "id": "ideal_date",
+      "teaches": [
+        "ideal_date"
+      ],
+      "lines": [
+        {
+          "speaker": "jessica",
+          "text": "Ideal date? Late-night food crawl at the night market. Just saying."
+        }
+      ]
+    },
+    {
+      "id": "nickname",
+      "teaches": [
+        "nickname"
+      ],
+      "lines": [
+        {
+          "speaker": "jessica",
+          "text": "Once I actually like you, I'll call you anh. Don't get your hopes up.",
+          "translation": "Once I actually like you, I'll call you anh (\"you\", for a guy she's close to). Don't get your hopes up.",
+          "keep_nickname": true
+        }
       ]
     }
   ]

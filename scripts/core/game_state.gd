@@ -7,8 +7,8 @@ var slot_index := 0
 var time_left := 0
 var location := ""             # where the player is this slot ("" = choosing)
 var in_date := false           # a Tiến Lên date is being played
-## character id -> {affection, unlocks, stages, trivia_answered, talks_seen, start_affection,
-## start_unlocks}
+## character id -> {affection, unlocks, stages, trivia_answered (ids), talks_seen (exchange and
+## fact ids), soft_facts_seen, start_affection, start_unlocks}
 var characters := {}
 var inventory := {}            # gift id -> count
 var match_record := {"wins": 0, "losses": 0}
@@ -31,7 +31,7 @@ func reset(starter_inventory: Dictionary = {}) -> void:
 func char_state(id: String) -> Dictionary:
 	if not characters.has(id):
 		characters[id] = {"affection": 0, "unlocks": [], "stages": [], "trivia_answered": [],
-			"talks_seen": [], "start_affection": 0, "start_unlocks": []}
+			"talks_seen": [], "soft_facts_seen": [], "start_affection": 0, "start_unlocks": []}
 	return characters[id]
 
 

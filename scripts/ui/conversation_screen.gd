@@ -84,6 +84,7 @@ func _init() -> void:
 
 	dialogue = DialogueBox.new()
 	dialogue.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	dialogue.grow_vertical = Control.GROW_DIRECTION_BEGIN  # long lines grow upwards, not off-screen
 	_offsets(dialogue, 490, -24, -205, -16)
 	add_child(dialogue)
 
@@ -206,19 +207,43 @@ func _show_choices(options: Array, on_pick: Callable) -> void:
 
 # --- Actions ----------------------------------------------------------------------
 
+## What the next Talk will be: a soft fact she's now ready to share (these come first),
+## then the next small-talk exchange, then a one-line fact. Returns {kind, data} or null.
 func _next_talk():
-	var seen: Array = GameState.char_state(character_id).talks_seen
+	var st: Dictionary = GameState.char_state(character_id)
+	for f in profile.soft_facts():
+		if st.affection >= f.get("min_affection", 0) and not st.soft_facts_seen.has(f.id):
+			return {"kind": "soft_fact", "data": f}
 	for ex in Characters.talk(character_id):
-		if not seen.has(ex.id):
-			return ex
+		if not st.talks_seen.has(ex.id):
+			return {"kind": "exchange", "data": ex}
+	for f in Characters.fact_lines(character_id):
+		if not st.talks_seen.has(f.id):
+			return {"kind": "fact", "data": f}
 	return null
 
 
 func _on_talk() -> void:
-	var ex = _next_talk()
-	if ex == null:
+	var next = _next_talk()
+	if next == null:
 		_say_event("on_talk_done")
 		return
+	var st: Dictionary = GameState.char_state(character_id)
+	if next.kind == "soft_fact":
+		var f: Dictionary = next.data
+		st.soft_facts_seen.append(f.id)
+		GameState.log_event("talk", "%s opened up about %s." % [profile.first_name(), f.id.replace("_", " ")])
+		var reveal: Dictionary = f.duplicate()
+		reveal["speaker"] = character_id
+		_play(_lines([reveal]), func(): _say_event("on_soft_fact_revealed", func(): action_taken.emit("talk")))
+		return
+	if next.kind == "fact":
+		var fact: Dictionary = next.data
+		st.talks_seen.append(fact.id)
+		GameState.log_event("talk", "%s mentioned her %s." % [profile.first_name(), fact.id.replace("_", " ")])
+		_play(_lines(fact.lines), func(): action_taken.emit("talk"))
+		return
+	var ex: Dictionary = next.data
 	_play(_lines(ex.lines), func():
 		dialogue.show_static(profile.first_name(), "...", "")
 		_show_choices(ex.choices.map(func(c): return c.text), func(i):
@@ -231,9 +256,11 @@ func _on_talk() -> void:
 			_play(_lines(choice.reply), func(): action_taken.emit("talk"))))
 
 
+## Questions she'll still ask: not answered yet, and within her current affection gate.
 func _unanswered_trivia() -> Array:
-	var answered: Array = GameState.char_state(character_id).trivia_answered
-	return profile.trivia().filter(func(q): return not answered.has(q.question))
+	var st: Dictionary = GameState.char_state(character_id)
+	return profile.trivia_available(st.affection).filter(
+		func(q): return not st.trivia_answered.has(Character.trivia_id(q)))
 
 
 func _on_quiz() -> void:
@@ -247,10 +274,10 @@ func _on_quiz() -> void:
 	dialogue.show_static(profile.first_name(), q.question)
 	_show_choices(options, func(i):
 		var correct: bool = options[i] == q.answer
-		GameState.char_state(character_id).trivia_answered.append(q.question)
+		GameState.char_state(character_id).trivia_answered.append(Character.trivia_id(q))
 		GameState.log_event("trivia_correct" if correct else "trivia_wrong", "%s \"%s\" — %s." % [
 			"Got" if correct else "Missed", q.question, "right" if correct else "wrong"])
-		EventBus.fire("trivia_answered", {"character_id": character_id, "question": q.question,
+		EventBus.fire("trivia_answered", {"character_id": character_id, "question": Character.trivia_id(q),
 			"correct": correct})
 		if correct:
 			_say_event("on_trivia_correct", func(): action_taken.emit("quiz"))

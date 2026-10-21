@@ -56,6 +56,12 @@ Some places stay locked until her affection reaches a stage. When the day ends, 
 
 No code changes are needed; the tests load an extra character from data to check this.
 
+**Trivia and soft facts:**
+- Trivia questions can have a `min_affection`. Quiz me only asks the questions she's ready for. For Jessica, 18 of 26 are available at the start.
+- `soft_facts` are personal stories she shares once affection is high enough. When one is available, Talk plays it first.
+- After the small-talk exchanges run out, Talk moves on to the one-line `facts` in `data/talk/<id>.json`.
+- Every quiz answer is taught somewhere: in an exchange, a fact or a soft fact. A test checks this.
+
 Dialogue lines can be a plain string or `{"text": ..., "translation": ...}`. The translation is shown as an English subtitle when the conversation screen's subtitles toggle is on.
 
 ### Jessica
