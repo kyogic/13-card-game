@@ -16,7 +16,6 @@ const MAX_POWERUP_USES := 2
 ## 2-player opponent outfits. The first is the free default; the rest cost coins.
 const OUTFITS := [
 	{"id": "jessica", "name": "Classic", "path": "res://assets/characters/jessica/default.png"},
-	{"id": "jessica_smile", "name": "Smile", "path": "res://assets/characters/jessica/smile.png"},
 	{"id": "jessica_street", "name": "Street", "path": "res://assets/characters/jessica/street.png"},
 	{"id": "jessica_pajamas", "name": "Pajamas", "path": "res://assets/characters/jessica/pajamas.png"},
 	{"id": "jessica_maid", "name": "Maid", "path": "res://assets/characters/jessica/maid.png"},
@@ -71,6 +70,7 @@ var save_path := "user://save.cfg"
 var coins := 0
 var unlocked: Array = ["jessica"]
 var selected_outfit := "jessica"
+var date_outfit := ""          # outfit she wore to the current date (random from unlocked)
 var match_wins := [0, 0]       # games won this match by [you, opponent]
 var match_game := 0            # which game of the match is being played
 var last_game_winner := -1     # leads the next game of the match
@@ -1147,7 +1147,8 @@ func _outfit(id: String) -> Dictionary:
 	return OUTFITS[0]
 
 
-## Shows the selected outfit, full-length, in 2-player games.
+## Shows her outfit, full-length, in 2-player games: the date's random outfit on a date,
+## otherwise the one selected in the Wardrobe.
 func _update_portrait() -> void:
 	portrait.visible = num_players == 2 and table.visible
 	nameplate.visible = portrait.visible
@@ -1157,7 +1158,7 @@ func _update_portrait() -> void:
 		# Wardrobe outfits (if this opponent has any) replace the profile portrait.
 		var path: String = opponent.get("portrait", "")
 		if OUTFITS.any(func(o): return o.id.begins_with(opponent.get("id", "?"))):
-			path = _outfit(selected_outfit).path
+			path = _outfit(date_outfit if in_date and date_outfit != "" else selected_outfit).path
 		portrait.texture = load(path)
 
 
@@ -1264,6 +1265,11 @@ func _load_progress() -> void:
 	# Saves from before the character was named used "abg" ids.
 	unlocked = unlocked.map(func(id): return id.replace("abg", "jessica"))
 	selected_outfit = selected_outfit.replace("abg", "jessica")
+	# Outfits taken out of the lineup (e.g. Smile): refund their coins.
+	var known := OUTFITS.map(func(o): return o.id)
+	for id in unlocked.filter(func(id): return not known.has(id)):
+		unlocked.erase(id)
+		coins += UNLOCK_COST
 	if not unlocked.has(selected_outfit):
 		selected_outfit = "jessica"
 
@@ -1289,7 +1295,14 @@ func _set_opponent(info: Dictionary) -> void:
 func _on_date_requested(info: Dictionary) -> void:
 	_set_opponent(info.opponent)
 	in_date = true
+	date_outfit = random_unlocked_outfit()
 	_start_match()
+
+
+## She shows up to each date in a random outfit you've unlocked (kept for the whole match).
+func random_unlocked_outfit() -> String:
+	var owned := OUTFITS.filter(func(o): return unlocked.has(o.id))
+	return owned.pick_random().id if not owned.is_empty() else OUTFITS[0].id
 
 
 ## Ends a date and hands control back to the dating layer.

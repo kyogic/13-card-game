@@ -73,7 +73,10 @@ Her profile is `data/characters/jessica.json`.
   - Afternoon: boba shop (needs Curious, 20)
   - Evening: night market (needs Catching feelings, 70)
   - Night: nowhere
-- **Wardrobe:** 2-player matches from the main menu still earn coins for unlocking her outfits. Those are saved separately in `user://save.cfg`.
+- **Wardrobe:** 2-player matches from the main menu still earn coins for unlocking her outfits: Street, Pajamas, Maid and Lace (Classic is free). Those are saved separately in `user://save.cfg`.
+  - **On a date** she shows up in a random outfit you've unlocked, kept for the whole match.
+  - **Quick 2-player matches** from the menu use the outfit selected in the Wardrobe.
+  - Smile was removed from the lineup. A save that had unlocked it gets its coin back.
 
 ### Character art layout
 ```

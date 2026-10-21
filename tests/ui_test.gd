@@ -184,7 +184,8 @@ func _timer_unit_checks() -> void:
 
 func _match_and_wardrobe_checks() -> void:
 	check(main.coins == 0 and main.selected_outfit == "jessica", "fresh save defaults to Jessica")
-	check(main.OUTFITS.size() == 6, "six Jessica outfits")
+	check(main.OUTFITS.size() == 5 and not main.OUTFITS.any(func(o): return o.id == "jessica_smile"),
+		"five outfits, no Smile")
 	for o in main.OUTFITS:
 		check(load(o.path) is Texture2D, "outfit image loads: %s" % o.path)
 	main._start_match()
@@ -217,9 +218,9 @@ func _match_and_wardrobe_checks() -> void:
 	check(not main.wardrobe_slots["jessica_maid"].button.disabled, "can afford unlock")
 	main._on_outfit_pressed("jessica_maid")
 	check(main.coins == 0 and main.unlocked.has("jessica_maid") and main.selected_outfit == "jessica_maid", "unlock")
-	check(main.wardrobe_slots["jessica_smile"].button.disabled, "can't unlock without coins")
-	main._on_outfit_pressed("jessica_smile")
-	check(not main.unlocked.has("jessica_smile"), "no free unlocks")
+	check(main.wardrobe_slots["jessica_lace"].button.disabled, "can't unlock without coins")
+	main._on_outfit_pressed("jessica_lace")
+	check(not main.unlocked.has("jessica_lace"), "no free unlocks")
 	var reloaded = load("res://scenes/main.tscn").instantiate()
 	reloaded.save_path = TEST_SAVE
 	root.add_child(reloaded)
@@ -238,6 +239,32 @@ func _match_and_wardrobe_checks() -> void:
 		"old abg save migrates")
 	migrated.queue_free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_old_save.cfg"))
+	# A save that had Smile unlocked/selected gets the coin back and falls back to Classic.
+	var smile_cfg := ConfigFile.new()
+	smile_cfg.set_value("progress", "coins", 0)
+	smile_cfg.set_value("progress", "unlocked", ["jessica", "jessica_smile", "jessica_maid"])
+	smile_cfg.set_value("progress", "selected_outfit", "jessica_smile")
+	smile_cfg.save("user://test_smile_save.cfg")
+	var refunded = load("res://scenes/main.tscn").instantiate()
+	refunded.save_path = "user://test_smile_save.cfg"
+	root.add_child(refunded)
+	check(refunded.unlocked == ["jessica", "jessica_maid"] and refunded.coins == 1
+		and refunded.selected_outfit == "jessica", "removed Smile outfit is refunded")
+	refunded.queue_free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_smile_save.cfg"))
+
+	# Dates: she shows up in a random unlocked outfit (never a locked one).
+	main.unlocked = ["jessica", "jessica_maid", "jessica_lace"]
+	var worn := {}
+	for i in 60:
+		worn[main.random_unlocked_outfit()] = true
+	check(worn.keys().size() == 3 and worn.keys().all(func(id): return main.unlocked.has(id)),
+		"random date outfits cover all unlocked ones: %s" % [worn.keys()])
+	main._on_date_requested({"opponent": main.opponent})
+	check(main.unlocked.has(main.date_outfit)
+		and main.portrait.texture.resource_path == main._outfit(main.date_outfit).path, "date shows her date outfit")
+	main.in_date = false
+	main.unlocked = ["jessica"]
 	main._on_outfit_pressed("jessica")
 	check(main.selected_outfit == "jessica", "re-select owned outfit for free")
 	main._show_menu()
