@@ -25,6 +25,7 @@ Affection="*res://scripts/dating/affection_system.gd"
 Calendar="*res://scripts/dating/calendar.gd"
 SaveGame="*res://scripts/core/save_system.gd"
 Journal="*res://scripts/dating/journal.gd"
+Economy="*res://scripts/dating/economy.gd"
 
 [display]
 

@@ -42,5 +42,12 @@
   "ui": {
     "typewriter_chars_per_second": 45,
     "popup_seconds": 1.2
+  },
+  "economy": {
+    "start_money": 30,
+    "talk": 10,
+    "trivia_correct": 15,
+    "date_won": 40,
+    "date_lost": 20
   }
 }

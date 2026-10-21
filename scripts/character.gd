@@ -7,7 +7,8 @@ extends RefCounted
 ## the player's nickname even before it is unlocked (e.g. a line that teaches it).
 
 ## Display names for ids whose plain-English capitalisation would lose the Vietnamese.
-const DISPLAY_NAMES := {"ca_phe_sua_da": "Cà phê sữa đá", "pho_takeout": "Phở takeout"}
+const DISPLAY_NAMES := {"ca_phe_sua_da": "Cà phê sữa đá", "pho_takeout": "Phở takeout",
+	"7_eleven_toastie": "7-Eleven toastie"}
 
 var data: Dictionary = {}
 

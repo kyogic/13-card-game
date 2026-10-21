@@ -7,6 +7,7 @@ signal wait_pressed
 signal save_pressed
 signal menu_pressed
 signal journal_pressed
+signal shop_pressed
 
 const AffectionMeter := preload("res://scripts/ui/affection_meter.gd")
 const Character := preload("res://scripts/character.gd")
@@ -76,6 +77,12 @@ func _init() -> void:
 	journal.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	journal.pressed.connect(func(): journal_pressed.emit())
 	row.add_child(journal)
+	var shop := Button.new()
+	shop.text = "Shop"
+	shop.add_theme_font_size_override("font_size", 16)
+	shop.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	shop.pressed.connect(func(): shop_pressed.emit())
+	row.add_child(shop)
 	var menu := Button.new()
 	menu.text = "Main menu"
 	menu.tooltip_text = "Saves, then returns to the main menu"
@@ -126,4 +133,4 @@ func refresh() -> void:
 	for g in GameState.inventory:
 		if GameState.inventory[g] > 0:
 			items.append("%s ×%d" % [Character.pretty(g), GameState.inventory[g]])
-	inventory_label.text = "Gifts: " + (", ".join(items) if not items.is_empty() else "none")
+	inventory_label.text = "$%d   ·   Gifts: %s" % [GameState.money, ", ".join(items) if not items.is_empty() else "none"]

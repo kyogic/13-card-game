@@ -8,6 +8,7 @@ const CalendarScreen := preload("res://scripts/ui/calendar_screen.gd")
 const SummaryScreen := preload("res://scripts/ui/summary_screen.gd")
 const DebugPanel := preload("res://scripts/ui/debug_panel.gd")
 const JournalScreen := preload("res://scripts/ui/journal_screen.gd")
+const ShopScreen := preload("res://scripts/ui/shop_screen.gd")
 const ReactionBubble := preload("res://scripts/ui/reaction_bubble.gd")
 const AffectionMeter := preload("res://scripts/ui/affection_meter.gd")
 
@@ -16,6 +17,7 @@ var calendar
 var conversation
 var summary
 var journal
+var shop
 var debug_panel
 var bubble
 var date_meter
@@ -43,7 +45,11 @@ func _init() -> void:
 	summary.closed.connect(_on_summary_closed)
 	summary.menu_requested.connect(_return_to_menu)
 	screens.add_child(summary)
-	screens.add_child(journal)  # overlay above the other screens
+	screens.add_child(journal)  # overlays above the other screens
+	shop = ShopScreen.new()
+	shop.closed.connect(func(): calendar.refresh())
+	screens.add_child(shop)
+	calendar.shop_pressed.connect(func(): shop.open())
 	calendar.journal_pressed.connect(func(): journal.open())
 	conversation.journal_pressed.connect(func(): journal.open(conversation.character_id))
 
@@ -76,12 +82,16 @@ func _ready() -> void:
 	EventBus.time_advanced.connect(_on_time_advanced)
 	EventBus.day_ended.connect(_on_day_ended)
 	EventBus.continue_story_requested.connect(func(_info): continue_story())
+	EventBus.money_changed.connect(func(_info):
+		if conversation.visible:
+			_refresh_status())
 	hide_all()
 
 
 func hide_all() -> void:
 	screens.visible = false
 	journal.visible = false
+	shop.visible = false
 	date_meter.visible = false
 	bubble.dismiss()
 
@@ -153,8 +163,8 @@ func _on_action_taken(kind: String) -> void:
 
 
 func _refresh_status() -> void:
-	conversation.set_status("%s  ·  time left %d/%d" % [Calendar.slot_name(), GameState.time_left,
-		Calendar.units_per_slot()])
+	conversation.set_status("%s  ·  time left %d/%d  ·  $%d" % [Calendar.slot_name(), GameState.time_left,
+		Calendar.units_per_slot(), GameState.money])
 
 
 func _on_time_advanced(info: Dictionary) -> void:

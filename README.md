@@ -14,7 +14,15 @@ A playable prototype of the Vietnamese card game **Tiến Lên** built with **Go
 ## Story Mode (dating layer)
 The story lasts **3 days**, each with Morning, Afternoon, Evening and Night.
 - **Carried between days:** affection, unlocks and answered trivia.
-- **Each new morning:** a few more gifts (`daily_gifts` in `data/story.json`).
+- **Money ($):**
+  - You earn it by talking (+$10), answering her quiz right (+$15) and going on dates (+$40 for a win, +$20 for a loss).
+  - Spend it in the **Shop** (calendar). Each morning the shop stocks 6 random gifts, and shopping takes no time.
+  - Prices are in `data/shop.json`; the earnings are under `economy` in `tuning.json`.
+  - Story money is separate from the Quickplay coins used in the Wardrobe.
+- **Journal** (calendar and conversations):
+  - A page per girl with every fact you've learned about her, from talk, soft facts and right quiz answers (e.g. "Boba order: Taro with lychee jelly", 9 of 26).
+  - It also lists which gifts she loved, liked or disliked.
+  - Labels come from each trivia id, or an optional `journal_label` on the question.
 - **After each day:** a summary of that day, with **Start Day N** and **Return to main menu** buttons. The summary never shows affection, so how each girl feels stays a mystery. The calendar also has a **Main menu** button. Both menu buttons save first.
 - **Wrong quiz answers:** she doesn't reveal the right answer. You learn it by talking to her.
 - **During a date:** her speech bubble sits down by her feet, so it never covers her face.

@@ -29,20 +29,18 @@ func days() -> int:
 func start_story() -> void:
 	GameState.reset(story.get("starter_inventory", {}))
 	GameState.day = 1
+	GameState.money = Config.int_value("economy.start_money")
 	for id in Characters.ids():
 		Affection.ensure(id)
 		GameState.char_state(id).story_start_affection = Affection.value(id)
 	_begin_day()
 
 
-## After a day's summary: move to the next morning (adds that day's gifts).
+## After a day's summary: move to the next morning.
 func start_next_day() -> void:
 	if not day_over or is_final_day():
 		return
 	GameState.day += 1
-	var gifts: Dictionary = story.get("daily_gifts", {})
-	for g in gifts:
-		GameState.inventory[g] = GameState.inventory.get(g, 0) + int(gifts[g])
 	_begin_day()
 
 
@@ -52,6 +50,8 @@ func _begin_day() -> void:
 		st.start_affection = Affection.value(id)
 		st.start_unlocks = st.unlocks.duplicate()
 	GameState.day_log = []
+	GameState.day_start_money = GameState.money
+	Economy.restock()
 	day_over = false
 	GameState.slot_index = 0
 	GameState.location = ""

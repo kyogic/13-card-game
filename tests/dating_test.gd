@@ -374,6 +374,61 @@ func _calendar_checks() -> void:
 	await _fact_line_check()
 	await _two_girls_checks()
 	await _save_load_checks()
+	await _economy_checks()
+
+
+## Story money and the shop.
+func _economy_checks() -> void:
+	var eco: Node = root.get_node("Economy")
+	bus.fire("new_story_requested")
+	await process_frame
+	check(state.money == 30 and state.shop_stock.size() == 6, "a new story starts with $30 and a stocked shop")
+	check(state.shop_stock.all(func(i): return eco.price(i) > 0), "every stocked item has a price")
+	check("$30" in layer.calendar.inventory_label.text, "calendar shows your money")
+	# Earning: talk, right answers, dates.
+	bus.fire("fact_learned", {"character_id": "jessica", "facts": ["age"], "source": "talk"})
+	bus.fire("fact_learned", {"character_id": "jessica", "facts": ["age"], "source": "quiz"})
+	bus.fire("trivia_answered", {"character_id": "jessica", "correct": true})
+	bus.fire("trivia_answered", {"character_id": "jessica", "correct": false})
+	check(state.money == 55, "talk +$10, right answer +$15, wrong answer $0 (got $%d)" % state.money)
+	state.in_date = true
+	bus.fire("match_ended", {"opponent_id": "jessica", "winner": "player", "score": [2, 0]})
+	bus.fire("match_ended", {"opponent_id": "jessica", "winner": "opponent", "score": [0, 2]})
+	state.in_date = false
+	bus.fire("match_ended", {"opponent_id": "jessica", "winner": "player", "score": [2, 0]})
+	check(state.money == 115, "date won +$40, lost +$20, quickplay $0 (got $%d)" % state.money)
+	# Shopping.
+	layer.calendar.shop_pressed.emit()
+	check(layer.shop.visible and layer.shop.buy_buttons.size() == 6 and "$115" in layer.shop.money_label.text,
+		"shop shows today's stock")
+	var item: String = state.shop_stock[0]
+	var have: int = state.inventory.get(item, 0)
+	layer.shop.buy_buttons[item].pressed.emit()
+	check(state.money == 115 - eco.price(item) and state.inventory[item] == have + 1, "buying adds the gift")
+	check(not eco.buy("not_in_stock"), "can only buy what's in stock")
+	state.money = 0
+	layer.shop.refresh()
+	check(layer.shop.buy_buttons.values().all(func(b): return b.disabled), "can't buy without money")
+	check(not eco.buy(item) and state.inventory[item] == have + 1, "no money, no gift")
+	state.money = 100
+	layer.shop.get_child(1).find_children("*", "Button", true, false).filter(
+		func(b): return b.text == "Close")[0].pressed.emit()
+	check(not layer.shop.visible and "$100" in layer.calendar.inventory_label.text, "closing the shop")
+	# Money and stock survive save/load; the summary reports the day's money.
+	var stock: Array = state.shop_stock.duplicate()
+	root.get_node("SaveGame").save_game()
+	state.money = 1
+	state.shop_stock = []
+	root.get_node("SaveGame").load_game()
+	check(state.money == 100 and state.shop_stock == stock, "money and stock are saved")
+	for i in 4:
+		layer.calendar.wait_pressed.emit()
+	await process_frame
+	check("Money:  $100  (+70 today)" in layer.summary.body.text, "summary: money: " + layer.summary.body.text)
+	layer.summary.continue_button.pressed.emit()
+	check(state.day == 2 and state.shop_stock.size() == 6 and state.day_start_money == 100, "next morning restocks")
+	root.get_node("SaveGame").delete_save()
+	layer.hide_all()
 
 
 ## Arisa: data, schedule conflicts, her conversation and her Second Wind.
@@ -594,8 +649,8 @@ func _multi_day_checks() -> void:
 	check(layer.calendar.title_label.text == "Day 2 of 3  ·  Morning", "calendar shows the day")
 	check(affection.value("jessica") == aff_before and state.char_state("jessica").trivia_answered == answered,
 		"affection and answered trivia carry over")
-	check(state.inventory.get("pho_takeout", 0) == pho_before + 1 and state.inventory.get("jasmine_garland", 0) >= 1,
-		"daily gifts arrive each morning")
+	check(state.inventory.get("pho_takeout", 0) == pho_before and state.shop_stock.size() == 6
+		and state.day_start_money == state.money, "no free gifts: the shop restocks each morning instead")
 	check(state.day_log.is_empty() and state.char_state("jessica").start_affection == aff_before,
 		"day stats reset each morning")
 	check(state.match_record.wins == 1, "story match record carries over")

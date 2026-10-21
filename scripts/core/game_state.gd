@@ -12,6 +12,9 @@ var in_date := false           # a Tiến Lên date is being played
 ## journal shows), gift_notes (gift id -> her reaction)}
 var characters := {}
 var inventory := {}            # gift id -> count
+var money := 0                 # story money ($), see Economy
+var day_start_money := 0       # for the day summary
+var shop_stock: Array = []     # item ids for sale today
 var match_record := {"wins": 0, "losses": 0}  # whole story
 var day_log: Array = []        # [{kind, text}] for the end-of-day summary (cleared each morning)
 var settings := {"subtitles": true}
@@ -25,6 +28,9 @@ func reset(starter_inventory: Dictionary = {}) -> void:
 	in_date = false
 	characters = {}
 	inventory = starter_inventory.duplicate()
+	money = 0
+	day_start_money = 0
+	shop_stock = []
 	match_record = {"wins": 0, "losses": 0}
 	day_log = []
 
@@ -44,6 +50,7 @@ func log_event(kind: String, text: String) -> void:
 func to_dict() -> Dictionary:
 	return {"day": day, "slot_index": slot_index, "time_left": time_left, "location": location,
 		"characters": characters.duplicate(true), "inventory": inventory.duplicate(),
+		"money": money, "day_start_money": day_start_money, "shop_stock": shop_stock.duplicate(),
 		"match_record": match_record.duplicate(), "day_log": day_log.duplicate(true),
 		"settings": settings.duplicate()}
 
@@ -66,6 +73,9 @@ func from_dict(d: Dictionary) -> void:
 	inventory = {}
 	for g in d.get("inventory", {}):
 		inventory[g] = int(d.inventory[g])
+	money = int(d.get("money", 0))
+	day_start_money = int(d.get("day_start_money", money))
+	shop_stock = d.get("shop_stock", []).duplicate()
 	var record: Dictionary = d.get("match_record", {})
 	match_record = {"wins": int(record.get("wins", 0)), "losses": int(record.get("losses", 0))}
 	day_log = d.get("day_log", []).duplicate(true)

@@ -28,6 +28,8 @@ signal affection_stage_reached(info: Dictionary)  # {character_id, stage, unlock
 signal time_advanced(info: Dictionary)      # {slot_index, time_left}
 signal day_ended(info: Dictionary)          # {day, final}: final = the last day of the story
 signal game_saved(info: Dictionary)         # {path}
+signal money_changed(info: Dictionary)      # {delta, value, reason}
+signal item_bought(info: Dictionary)        # {item_id, price}
 signal game_loaded(info: Dictionary)        # {path}
 
 ## Card events the debug panel can fire by hand.

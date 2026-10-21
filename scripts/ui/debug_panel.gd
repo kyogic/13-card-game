@@ -41,6 +41,7 @@ func _init() -> void:
 	var time_row := HBoxContainer.new()
 	time_row.add_child(_button("New story", func(): EventBus.fire("new_story_requested")))
 	time_row.add_child(_button("Next slot", func(): Calendar.next_slot()))
+	time_row.add_child(_button("+$100", func(): Economy.earn(100, "debug")))
 	col.add_child(time_row)
 
 	col.add_child(_label("Card events", Color.WHITE))

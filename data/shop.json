@@ -1,0 +1,25 @@
+{
+  "_comment": "Story Mode shop. Prices in $. Each morning the shop stocks `stock_per_day` random items from this list.",
+  "stock_per_day": 6,
+  "items": {
+    "taro_boba": 15,
+    "pho_takeout": 20,
+    "ca_phe_sua_da": 10,
+    "festival_tickets": 60,
+    "gold_hoops": 50,
+    "nail_set": 25,
+    "scrunchie_pack": 10,
+    "grocery_store_flowers": 10,
+    "pumpkin_spice_latte": 8,
+    "mango_sticky_rice": 20,
+    "thai_milk_tea": 10,
+    "muay_thai_hand_wraps": 45,
+    "jasmine_garland": 30,
+    "poetry_notebook": 35,
+    "lakorn_box_set": 30,
+    "compression_socks": 15,
+    "7_eleven_toastie": 5,
+    "extra_spicy_som_tam": 8,
+    "cheap_perfume": 12
+  }
+}

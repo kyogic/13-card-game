@@ -62,6 +62,7 @@ func refresh(final := false) -> void:
 		lines.append("")
 	lines.append("Date matches today:  %d won, %d lost" % [GameState.count_log("match_won"),
 		GameState.count_log("match_lost")])
+	lines.append("Money:  $%d  (%+d today)" % [GameState.money, GameState.money - GameState.day_start_money])
 	var right := GameState.count_log("trivia_correct")
 	lines.append("Trivia:  %d of %d right   ·   Talks: %d   ·   Gifts given: %d" % [right,
 		right + GameState.count_log("trivia_wrong"), GameState.count_log("talk"), GameState.count_log("gift")])
