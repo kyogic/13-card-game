@@ -14,10 +14,12 @@ const IDLE_COLOR := Color(0.9, 0.95, 0.9)
 const MAX_POWERUP_USES := 2
 ## 2-player opponent outfits. The first is the free default; the rest cost coins.
 const OUTFITS := [
-	{"id": "abg", "name": "ABG", "path": "res://assets/characters/abg.png"},
-	{"id": "abg_smile", "name": "ABG Smile", "path": "res://assets/characters/abg_smile.png"},
-	{"id": "abg_pajamas", "name": "ABG Pajamas", "path": "res://assets/characters/abg_pajamas.png"},
-	{"id": "abg_maid", "name": "ABG Maid", "path": "res://assets/characters/abg_maid.png"},
+	{"id": "abg", "name": "ABG", "path": "res://assets/characters/abg/default.png"},
+	{"id": "abg_smile", "name": "ABG Smile", "path": "res://assets/characters/abg/smile.png"},
+	{"id": "abg_street", "name": "ABG Street", "path": "res://assets/characters/abg/street.png"},
+	{"id": "abg_pajamas", "name": "ABG Pajamas", "path": "res://assets/characters/abg/pajamas.png"},
+	{"id": "abg_maid", "name": "ABG Maid", "path": "res://assets/characters/abg/maid.png"},
+	{"id": "abg_lace", "name": "ABG Lace", "path": "res://assets/characters/abg/lace.png"},
 ]
 const UNLOCK_COST := 1
 const MATCH_WINS_NEEDED := 2   # 2-player games are best of 3
@@ -73,6 +75,7 @@ var table: Control
 var seats: Array = []          # per player: {box, name_label, backs, info_label}
 var pile_label: Label
 var pile_cards: HBoxContainer
+var pile_center: VBoxContainer
 var hand_area: Control
 var hand_views: Array = []
 var status_label: Label
@@ -198,6 +201,7 @@ func _build_table() -> void:
 
 	# Centre pile.
 	var center := VBoxContainer.new()
+	pile_center = center
 	center.alignment = BoxContainer.ALIGNMENT_CENTER
 	center.add_theme_constant_override("separation", 10)
 	center.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
@@ -268,13 +272,13 @@ func _build_table() -> void:
 	_set_offsets(match_label, -330, -12, 50, 76)
 	table.add_child(match_label)
 
-	# 2-player opponent portrait, sitting across the table from you.
+	# 2-player opponent, shown full-length on the left so her whole outfit is visible.
 	portrait = TextureRect.new()
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	portrait.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	_set_offsets(portrait, -150, 150, 0, 235)
+	portrait.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	_set_offsets(portrait, 10, 340, 4, 490)
 	table.add_child(portrait)
 	table.move_child(portrait, 0)
 
@@ -354,8 +358,8 @@ func _build_seats() -> void:
 		match presets[p]:
 			Control.PRESET_CENTER_TOP:
 				if num_players == 2:
-					# Beside the portrait rather than on top of it.
-					_set_offsets(box, 160, 400, 30, 190)
+					# Beside her portrait rather than on top of it.
+					_set_offsets(box, -290, -50, 20, 180)
 				else:
 					_set_offsets(box, -200, 200, 10, 190)
 			Control.PRESET_CENTER_LEFT:
@@ -480,6 +484,7 @@ func _start_game(players: int) -> void:
 	overlay.visible = false
 	table.visible = true
 	_build_seats()
+	_apply_layout()
 	_update_portrait()
 	if players == 2 and last_game_winner >= 0:
 		# Later games of a match: the previous winner leads with anything.
@@ -784,6 +789,12 @@ func _refresh_ui() -> void:
 		pile_label.text = "%s to lead — any combination" % names[current]
 	else:
 		pile_label.text = "%s: %s" % [names[last_player], Rules.type_name(last_combo)]
+		# Overlap the cards when a long straight would not fit.
+		var n := last_cards.size()
+		var room := pile_center.size.x
+		var w := CardView.CARD_SIZE.x
+		var gap := 6.0 if n * (w + 6) <= room else (room - w * n) / maxf(n - 1, 1)
+		pile_cards.add_theme_constant_override("separation", int(gap))
 		for c in last_cards:
 			var v := CardView.new()
 			v.setup(c, true, false)
@@ -843,7 +854,7 @@ func _format_time(seconds: int) -> String:
 
 func _log(line: String) -> void:
 	log_lines.append(line)
-	while log_lines.size() > 8:
+	while log_lines.size() > (5 if num_players == 2 else 8):
 		log_lines.pop_front()
 	print(line)
 
@@ -1050,17 +1061,28 @@ func _outfit(id: String) -> Dictionary:
 	return OUTFITS[0]
 
 
-## Shows the upper half of the selected outfit across the table in 2-player games.
+## Shows the selected outfit, full-length, in 2-player games.
 func _update_portrait() -> void:
 	portrait.visible = num_players == 2
 	_refresh_match_label()
-	if not portrait.visible:
-		return
-	var tex: Texture2D = load(_outfit(selected_outfit).path)
-	var bust := AtlasTexture.new()
-	bust.atlas = tex
-	bust.region = Rect2(0, 0, tex.get_width(), tex.get_height() * 0.5)
-	portrait.texture = bust
+	if portrait.visible:
+		portrait.texture = load(_outfit(selected_outfit).path)
+
+
+## 2-player games give the left side to ABG: the pile shifts right and the log
+## moves under the power-up panel.
+func _apply_layout() -> void:
+	if num_players == 2:
+		_set_offsets(pile_center, -280, 380, -140, 40)
+		log_label.position = Vector2(1036, 290)
+		log_label.size = Vector2(240, 190)
+		log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		log_label.add_theme_font_size_override("font_size", 13)
+	else:
+		_set_offsets(pile_center, -330, 330, -140, 40)
+		log_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+		log_label.position = Vector2(12, 10)
+		log_label.add_theme_font_size_override("font_size", 14)
 
 
 func _build_wardrobe() -> void:
@@ -1077,14 +1099,14 @@ func _build_wardrobe() -> void:
 	wardrobe_coins_label = _make_label("", 20, Color(1, 0.85, 0.2))
 	box.add_child(wardrobe_coins_label)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 24)
+	row.add_theme_constant_override("separation", 16)
 	box.add_child(row)
 	for o in OUTFITS:
 		var slot := VBoxContainer.new()
 		slot.add_theme_constant_override("separation", 6)
 		var image := TextureRect.new()
 		image.texture = load(o.path)
-		image.custom_minimum_size = Vector2(220, 380)
+		image.custom_minimum_size = Vector2(180, 290)
 		image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		slot.add_child(image)

@@ -74,6 +74,9 @@ func _timer_unit_checks() -> void:
 
 func _match_and_wardrobe_checks() -> void:
 	check(main.coins == 0 and main.selected_outfit == "abg", "fresh save defaults to ABG")
+	check(main.OUTFITS.size() == 6, "six ABG outfits")
+	for o in main.OUTFITS:
+		check(load(o.path) is Texture2D, "outfit image loads: %s" % o.path)
 	main._start_match()
 	check(main.names[1] == "ABG" and main.portrait.visible, "ABG sits across in 2-player")
 

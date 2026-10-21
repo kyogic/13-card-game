@@ -7,12 +7,23 @@ A playable prototype of the Vietnamese card game **Tiến Lên** built with **Go
 - **2 Players:** you against 1 CPU, half the deck. 26 cards are dealt (13 each) and the rest stay out of play.
 
 ## 2-player matches, coins and the Wardrobe
-- In 2-player mode you play against **ABG**, who sits across the table from you.
+- In 2-player mode you play against **ABG**. She is shown full-length on the left side of the table, so her whole outfit is visible.
 - 2-player games are a **best-of-3 match**. Whoever won the previous game leads the next one with any play.
 - Winning a match earns **1 coin**.
-- In the **Wardrobe** (main menu), spend 1 coin to unlock each of ABG's other outfits: Smile, Pajamas and Maid. Unlocked outfits can be switched between for free.
+- In the **Wardrobe** (main menu), spend 1 coin to unlock each of ABG's other outfits: Smile, Street, Pajamas, Maid and Lace. Unlocked outfits can be switched between for free.
 - Coins, unlocked outfits and the selected outfit are saved in `user://save.cfg`.
-- Character images are in `assets/characters/`. These are resized copies of the uploads in `Character Demo/` with the baked-in backgrounds removed. `Character Demo/.gdignore` stops Godot importing the large originals.
+
+### Character art layout
+```
+assets/characters/abg/
+  default.png smile.png street.png pajamas.png maid.png lace.png   <- game-ready (trimmed, 1000px tall)
+  source/                                                          <- original uploads (ignored by Godot via .gdignore)
+    abg_default.png abg_smile.png abg_street.png ...
+```
+To add an outfit:
+1. Put the original in `source/` as `abg_<name>.png`.
+2. Make a trimmed copy at `abg/<name>.png`.
+3. Add an entry to `OUTFITS` in `scripts/main.gd`.
 
 ## Power-ups
 Each power-up can be switched on or off with a toggle on the main menu. In a game you can use each enabled power-up once, up to **2 power-ups in total**. They appear in the top-right panel. Power-ups are for you only; the CPUs don't use them.
