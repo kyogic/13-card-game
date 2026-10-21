@@ -6,13 +6,33 @@ A playable prototype of the Vietnamese card game **Tiến Lên** built with **Go
 - **4 Players:** you against 3 CPU opponents, full 52-card deck, 13 cards each.
 - **2 Players:** you against 1 CPU, half the deck. 26 cards are dealt (13 each) and the rest stay out of play.
 
-## 2-player matches, coins and the Wardrobe
-- In 2-player mode you play against **Jessica**. The game sits in its own framed table on the right, and Jessica stands outside it on the left, full-length, so her whole outfit is visible. Her name is shown beneath her.
-- 2-player games are a **best-of-3 match**. Whoever won the previous game leads the next one with any play.
-- Winning a match earns **1 coin**.
-- In **Jessica's Wardrobe** (main menu), Classic is free. Spend 1 coin to unlock each of her other outfits: Smile, Street, Pajamas, Maid and Lace. Unlocked outfits can be switched between for free.
-- Coins, unlocked outfits and the selected outfit are saved in `user://save.cfg`.
-- Saves from before she was named Jessica are migrated automatically.
+## 2-player: Jessica
+Your 2-player opponent is **Jessica Trần ("Jess")**. Everything about her comes from her character profile, `data/characters/jessica.json`; edit that file to change her lines, gifts, trivia or play style.
+
+- **Table:** the game sits in its own framed table. Jessica stands outside it, full-length, with her name and affection underneath.
+- **Matches:** 2-player games are a best-of-3 match. The previous game's winner leads the next one, and winning a match earns 1 coin.
+- **Dialogue:** her lines appear in a speech bubble. She reacts when:
+  - a match starts
+  - a round ends
+  - you play a bomb, or a 2 you saved until late
+  - you use your first power-up of the game
+  - she uses her own power-up
+  - a game ends
+
+  She only calls you "anh" once her affection unlocks it.
+- **Play style:** the profile's `card_ai.tuning` makes her aggressive. She spends 2s early, rarely passes on purpose, and loves leading with straights, sometimes as a bluff.
+- **Signature power-up:** she uses **Lead Steal** once per game, right after losing a round she thought she'd win (she'd played a King or better).
+- **Affection (0–100):**
+  - Each match you finish with her gives +2.
+  - After each match she asks a trivia question; a right answer gives +7.
+  - Gifts from her profile page cost 1 coin: loved +15, liked +7, disliked −5.
+  - Affection is saved with your progress.
+- **Affection stages:** Unimpressed → Curious → Into it → Catching feelings → Ride or die.
+  - Into it unlocks the Street outfit for free and the "anh" nickname.
+  - Catching feelings unlocks the story behind her bracelet on her profile page.
+  - Dates and scenes are listed as "soon".
+- **Wardrobe:** Classic is free. Spend 1 coin to unlock each of her other outfits: Smile, Street, Pajamas, Maid and Lace.
+- **Saving:** coins, affection, unlocked outfits and the selected outfit are saved in `user://save.cfg`. Saves from before she was named Jessica are migrated automatically.
 
 ### Character art layout
 ```
@@ -65,7 +85,10 @@ Suit Up, Lucky Draw and Wild Card can't be used on the card you're required to o
 | `scripts/rules.gd` | Card encoding, combination detection, beat rules, and combo enumeration |
 | `scripts/ai.gd` | CPU strategy: cheapest legal play; saves 2s and bombs unless an opponent is close to going out |
 | `scripts/card_view.gd` | Card drawn in code; clickable |
-| `scripts/main.gd` | Menu, table UI, and turn flow |
+| `scripts/main.gd` | Menu, table UI, turn flow, matches, power-ups, and Jessica's in-game behaviour |
+| `scripts/character.gd` | Loads a character profile JSON (dialogue, affection stages, gifts, trivia, AI tuning) |
+| `scripts/profile_screen.gd` | Jessica's profile page: affection, unlocks, gifts |
+| `data/characters/jessica.json` | Jessica's character profile |
 | `tests/sim_test.gd` | Headless rule tests plus 300 CPU-only games |
 | `tests/ui_test.gd` | Plays full games through the real scene, driving the human seat with Hint |
 

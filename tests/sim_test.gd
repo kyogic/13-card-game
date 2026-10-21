@@ -10,8 +10,9 @@ var failures := 0
 
 func _init() -> void:
 	_rule_tests()
+	var jessica := {"aggression": 0.8, "two_hold_tendency": 0.2, "bluff_rate": 0.4, "prefers_straights": true}
 	for i in 300:
-		_simulate(4 if i % 2 == 0 else 2)
+		_simulate(4 if i % 2 == 0 else 2, jessica if i % 3 == 0 else {})
 	print("FAILURES: %d" % failures)
 	quit(1 if failures > 0 else 0)
 
@@ -47,7 +48,7 @@ func _rule_tests() -> void:
 	check(not Rules.can_beat(Rules.analyze([c("9", 0), c("10", 1), c("J", 2)]), s4), "straight length must match")
 
 
-func _simulate(n: int) -> void:
+func _simulate(n: int, tuning: Dictionary) -> void:
 	var deck := Rules.new_deck()
 	deck.shuffle()
 	var hands := []
@@ -72,7 +73,7 @@ func _simulate(n: int) -> void:
 		for q in n:
 			if q != current and hands[q].size() > 0:
 				danger = mini(danger, hands[q].size())
-		var cards := AI.choose_play(hands[current], last, required, danger)
+		var cards := AI.choose_play(hands[current], last, required, danger, tuning if current == 1 else {})
 		if cards.is_empty():
 			check(not last.is_empty(), "AI passed while leading")
 			passed[current] = true

@@ -30,6 +30,7 @@ func _run() -> void:
 	check(main.music_player.playing and main.music_player.stream.loop, "background music loops")
 	_timer_unit_checks()
 	_match_and_wardrobe_checks()
+	_jessica_checks()
 	_powerup_unit_checks()
 	for players in [4, 2, 4, 2, 4, 2, 4, 2]:
 		main._start_game(players)
@@ -66,6 +67,63 @@ func _try_random_powerup() -> void:
 
 
 ## Deterministic checks of each power-up's effect.
+func _jessica_checks() -> void:
+	var c = main.character
+	check(c.full_name() == "Jessica Trần" and main.opponent_name == "Jessica", "profile loaded")
+	check(main.nameplate.text == "Jessica Trần", "nameplate uses full name")
+
+	# She only calls you "anh" once affection unlocks it.
+	main.affection = 0
+	check(not ("anh" in c.line("on_game_loss_player", 0)), "no 'anh' at low affection")
+	check("anh" in c.line("on_game_loss_player", 50), "'anh' once unlocked")
+
+	# Gifts: loved +15, disliked -5, each costs a coin.
+	main.coins = 2
+	main.give_gift("taro_boba")
+	check(main.affection == 15 and main.coins == 1, "loved gift")
+	main.give_gift("grocery_store_flowers")
+	check(main.affection == 10 and main.coins == 0, "disliked gift")
+	check(main.give_gift("taro_boba") == "" and main.affection == 10, "no gift without coins")
+
+	# Reaching "Into it" (45) unlocks the Street outfit for free.
+	main.unlocked = ["jessica"]
+	main.affection = 40
+	main._add_affection(7, "test")
+	check(main.unlocked.has("jessica_street"), "stage unlock gives Street outfit")
+
+	# Trivia: the right answer gives +7.
+	main.affection = 0
+	main._offer_trivia()
+	var right := -1
+	for i in main.trivia_buttons.size():
+		if main.trivia_buttons[i].text == main.trivia_question.answer:
+			right = i
+	main._on_trivia_answer(right)
+	check(main.affection == 7, "trivia correct")
+
+	# Signature Lead Steal: after losing a round she played a 2 in.
+	main._start_match()
+	main.her_round_best = 12
+	main.last_player = 0
+	main._new_round(0)
+	check(main.current == 1 and main.her_powerup_used and main.last_speech == "Nope. My lead now.",
+		"Jessica steals the lead")
+	main.her_round_best = 12
+	main.last_player = 0
+	main._new_round(0)
+	check(main.current == 0, "her Lead Steal is once per game")
+
+	# Profile screen shows the bracelet story once unlocked.
+	main.affection = 75
+	main._show_profile()
+	check(main.profile_screen.visible and "bà ngoại" in main.profile_screen.story_label.text, "bracelet story")
+	main.affection = 0
+	main.coins = 0
+	main.unlocked = ["jessica"]
+	main._save_progress()
+	main._show_menu()
+
+
 func _timer_unit_checks() -> void:
 	check(main._format_time(0) == "0:00", "format 0")
 	check(main._format_time(75) == "1:15", "format 75")

@@ -2,6 +2,8 @@ extends Control
 ## Tien Len prototype: menu, table UI and turn flow. The whole UI is built in code.
 
 const Rules := preload("res://scripts/rules.gd")
+const Character := preload("res://scripts/character.gd")
+const ProfileScreen := preload("res://scripts/profile_screen.gd")
 const AI := preload("res://scripts/ai.gd")
 const CardView := preload("res://scripts/card_view.gd")
 const MUSIC := preload("res://audio/cardgame_song.mp3")
@@ -23,7 +25,10 @@ const OUTFITS := [
 ]
 const UNLOCK_COST := 1
 const MATCH_WINS_NEEDED := 2   # 2-player games are best of 3
-const OPPONENT_2P := "Jessica"
+const PROFILE_PATH := "res://data/characters/jessica.json"
+const GIFT_COST := 1
+## Affection-stage unlocks that map onto things the prototype already has.
+const STAGE_OUTFIT_UNLOCKS := {"casual_outfit_2": "jessica_street"}
 const FRAME_2P_LEFT := 430      # 2-player: the table frame starts here; Jessica stands to its left
 ## key -> [button name, description]. Each power-up can be used once per game.
 const POWERUPS := {
@@ -68,6 +73,16 @@ var selected_outfit := "jessica"
 var match_wins := [0, 0]       # games won this match by [you, opponent]
 var match_game := 0            # which game of the match is being played
 var last_game_winner := -1     # leads the next game of the match
+
+# --- 2-player character (Jessica) -------------------------------------------
+var character                  # Character profile loaded from PROFILE_PATH
+var opponent_name := "Jessica"
+var affection := 0
+var her_powerup_used := false  # her signature power-up, once per game
+var her_round_best := -1       # highest rank she played this round (to know she "thought she'd win")
+var last_speech := ""
+var speech_tween: Tween
+var trivia_question := {}
 var game_running := false
 
 # --- UI ---------------------------------------------------------------------
@@ -98,6 +113,14 @@ var wardrobe_coins_label: Label
 var wardrobe_slots := {}       # outfit id -> {image, button}
 var portrait: TextureRect
 var nameplate: Label
+var affection_label: Label
+var speech_bubble: PanelContainer
+var speech_label: Label
+var profile_screen: Control
+var trivia_box: VBoxContainer
+var trivia_label: Label
+var trivia_buttons: Array = []
+var trivia_result: Label
 var table_frame: Panel
 var match_label: Label
 var again_button: Button
@@ -111,12 +134,17 @@ func _ready() -> void:
 	bg.color = Color(0.05, 0.36, 0.2)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
+	character = Character.load_profile(PROFILE_PATH)
+	opponent_name = character.first_name()
 	_load_progress()
 	_start_music()
 	_build_menu()
 	_build_wardrobe()
 	_build_table()
 	_build_overlay()
+	profile_screen = ProfileScreen.new()
+	profile_screen.setup(self)
+	add_child(profile_screen)
 	_show_menu()
 
 
@@ -138,11 +166,15 @@ func _build_menu() -> void:
 	var four := _make_button("4 Players  —  You vs 3 CPU (full deck)", 24)
 	four.pressed.connect(_start_game.bind(4))
 	box.add_child(four)
-	var two := _make_button("2 Players  —  You vs %s (half deck, best of 3)" % OPPONENT_2P, 24)
+	var two := _make_button("2 Players  —  You vs %s (half deck, best of 3)" % opponent_name, 24)
 	two.pressed.connect(_start_match)
 	box.add_child(two)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
+	var profile_button := _make_button(opponent_name, 20)
+	profile_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	profile_button.pressed.connect(_show_profile)
+	row.add_child(profile_button)
 	var wardrobe_button := _make_button("Wardrobe", 20)
 	wardrobe_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	wardrobe_button.pressed.connect(_show_wardrobe)
@@ -296,13 +328,38 @@ func _build_table() -> void:
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	portrait.set_anchors_preset(Control.PRESET_LEFT_WIDE)
-	_set_offsets(portrait, 0, FRAME_2P_LEFT - 10, 10, -50)
+	_set_offsets(portrait, 0, FRAME_2P_LEFT - 10, 10, -78)
 	add_child(portrait)
 	move_child(portrait, table.get_index())
-	nameplate = _make_label(OPPONENT_2P, 30, Color(1, 0.85, 0.4))
+	nameplate = _make_label(character.full_name(), 28, Color(1, 0.85, 0.4))
 	nameplate.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	_set_offsets(nameplate, 0, FRAME_2P_LEFT - 10, -52, -8)
+	_set_offsets(nameplate, 0, FRAME_2P_LEFT - 10, -74, -36)
 	add_child(nameplate)
+	affection_label = _make_label("", 15, Color(1, 0.75, 0.85))
+	affection_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_set_offsets(affection_label, 0, FRAME_2P_LEFT - 10, -36, -10)
+	add_child(affection_label)
+	affection_label.visible = false
+
+	speech_bubble = PanelContainer.new()
+	var bubble_style := StyleBoxFlat.new()
+	bubble_style.bg_color = Color(1, 1, 1, 0.94)
+	bubble_style.set_corner_radius_all(14)
+	bubble_style.set_content_margin_all(12)
+	bubble_style.border_color = Color(0.9, 0.5, 0.7)
+	bubble_style.set_border_width_all(2)
+	speech_bubble.add_theme_stylebox_override("panel", bubble_style)
+	speech_bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	speech_bubble.position = Vector2(14, 10)
+	speech_bubble.custom_minimum_size = Vector2(FRAME_2P_LEFT - 40, 0)
+	speech_label = Label.new()
+	speech_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	speech_label.custom_minimum_size = Vector2(FRAME_2P_LEFT - 64, 0)
+	speech_label.add_theme_font_size_override("font_size", 18)
+	speech_label.add_theme_color_override("font_color", Color(0.15, 0.08, 0.12))
+	speech_bubble.add_child(speech_label)
+	add_child(speech_bubble)
+	speech_bubble.visible = false
 	portrait.visible = false
 	nameplate.visible = false
 
@@ -346,6 +403,26 @@ func _build_overlay() -> void:
 	box.add_child(_make_label("Game Over", 44, Color(1, 0.9, 0.4)))
 	result_label = _make_label("", 24, Color.WHITE)
 	box.add_child(result_label)
+
+	# After each 2-player match: a question about Jessica, for affection.
+	trivia_box = VBoxContainer.new()
+	trivia_box.add_theme_constant_override("separation", 8)
+	trivia_label = _make_label("", 20, Color(1, 0.75, 0.85))
+	trivia_box.add_child(trivia_label)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	for i in 4:
+		var b := _make_button("", 17)
+		b.custom_minimum_size = Vector2(260, 36)
+		b.pressed.connect(_on_trivia_answer.bind(i))
+		grid.add_child(b)
+		trivia_buttons.append(b)
+	trivia_box.add_child(grid)
+	trivia_result = _make_label("", 17, Color(1, 0.9, 0.6))
+	trivia_box.add_child(trivia_result)
+	box.add_child(trivia_box)
 	again_button = _make_button("Play Again", 22)
 	again_button.pressed.connect(_on_again_pressed)
 	box.add_child(again_button)
@@ -391,9 +468,14 @@ func _build_seats() -> void:
 			Control.PRESET_CENTER_RIGHT:
 				_set_offsets(box, -260, -20, -90, 110)
 			Control.PRESET_CENTER_BOTTOM:
-				# Your seat is just a name tag at the bottom-left above the hand.
-				box.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-				_set_offsets(box, 20, 220, -230, -170)
+				# Your seat is just a name tag above the hand: bottom-left, or beside the
+				# buttons in the narrower 2-player frame so it can't collide with the status line.
+				if num_players == 2:
+					box.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+					_set_offsets(box, -175, -16, -205, -145)
+				else:
+					box.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+					_set_offsets(box, 20, 220, -230, -170)
 		seats.append({"box": box, "name_label": name_label, "backs": backs, "info_label": info_label})
 
 
@@ -446,6 +528,9 @@ func _show_menu() -> void:
 	table.visible = false
 	portrait.visible = false
 	nameplate.visible = false
+	affection_label.visible = false
+	speech_bubble.visible = false
+	profile_screen.visible = false
 	overlay.visible = false
 	menu_coins_label.visible = true
 	menu_coins_label.text = "Coins: %d" % coins
@@ -467,7 +552,7 @@ func _start_game(players: int) -> void:
 	num_players = players
 	names = ["You"]
 	for i in range(1, players):
-		names.append("CPU %d" % i if players > 2 else OPPONENT_2P)
+		names.append("CPU %d" % i if players > 2 else opponent_name)
 	if players == 2:
 		match_game += 1
 
@@ -488,6 +573,8 @@ func _start_game(players: int) -> void:
 	powerup_used = {}
 	powerup_uses_left = MAX_POWERUP_USES
 	lead_steal_armed = false
+	her_powerup_used = false
+	her_round_best = -1
 	wild_card = -1
 	flash_text = ""
 	finish_order = []
@@ -523,6 +610,8 @@ func _start_game(players: int) -> void:
 			players, "You hold" if current == HUMAN else names[current] + " holds",
 			Rules.card_name(required_card), "open" if current == HUMAN else "opens"])
 	_rebuild_hand()
+	if players == 2 and match_game == 1:
+		_say("greeting")
 	_start_turn()
 
 
@@ -534,7 +623,8 @@ func _start_turn() -> void:
 	await get_tree().create_timer(CPU_DELAY).timeout
 	if my_game != game_id:
 		return  # game was restarted or abandoned while waiting
-	var cards := AI.choose_play(hands[current], last_combo, required_card, _danger_for(current))
+	var cards := AI.choose_play(hands[current], last_combo, required_card, _danger_for(current),
+		character.card_tuning() if num_players == 2 else {})
 	if cards.is_empty():
 		_do_pass(current)
 	else:
@@ -555,6 +645,8 @@ func _do_play(p: int, cards: Array, from_hand: Array = []) -> void:
 	last_player = p
 	required_card = -1
 	_log("%s played %s." % [names[p], Rules.type_name(combo)])
+	if num_players == 2:
+		_react_to_play(p, combo, cards)
 
 	if hands[p].is_empty():
 		finish_order.append(p)
@@ -592,10 +684,14 @@ func _advance_turn() -> void:
 
 
 func _new_round(leader: int) -> void:
+	var round_winner := last_player
 	if lead_steal_armed and leader != HUMAN and hands[HUMAN].size() > 0:
 		lead_steal_armed = false
 		_log("Lead Steal! You take the lead from %s." % names[leader])
 		leader = HUMAN
+	elif num_players == 2:
+		leader = _jessica_round_end(round_winner, leader)
+	her_round_best = -1
 	passed.fill(false)
 	locked.fill(false)
 	dead_pile.append_array(last_cards)
@@ -648,8 +744,17 @@ func _end_game() -> void:
 	_log("Game over after %s." % length)
 	var text := headline + "\n\n" + "\n".join(lines) + "\n\nGame length:  " + length
 	again_button.text = "Play Again"
+	trivia_box.visible = false
 	if num_players == 2:
-		text = headline + "\n\nGame length:  " + length + "\n\n" + _record_match_result(finish_order[0])
+		var quote: String = character.line(
+			"on_game_win_player" if finish_order[0] == HUMAN else "on_game_loss_player", affection)
+		_say_text(quote)
+		text = "%s   ·   Game length:  %s\n%s" % [headline, length, _record_match_result(finish_order[0])]
+		if quote != "":
+			text += "\n\n%s: “%s”" % [opponent_name, quote]
+		if _match_over():
+			_add_affection(character.affection_value("neutral"), "for playing a match with her")
+			_offer_trivia()
 	result_label.text = text
 	overlay.visible = true
 	_refresh_match_label()
@@ -955,6 +1060,8 @@ func _refresh_powerups() -> void:
 func _consume_powerup(key: String) -> void:
 	powerup_used[key] = true
 	powerup_uses_left -= 1
+	if num_players == 2 and powerup_uses_left == MAX_POWERUP_USES - 1:
+		_say("on_powerup_used_by_player", true)  # "...already?" only fits the first one
 
 
 func _on_powerup_pressed(key: String) -> void:
@@ -1048,7 +1155,7 @@ func _apply_card_powerup(key: String) -> void:
 func _record_match_result(winner: int) -> String:
 	match_wins[winner] += 1
 	last_game_winner = winner
-	var score := "Match:  You %d – %d %s" % [match_wins[0], match_wins[1], OPPONENT_2P]
+	var score := "Match:  You %d – %d %s" % [match_wins[0], match_wins[1], opponent_name]
 	if match_wins[winner] < MATCH_WINS_NEEDED:
 		again_button.text = "Next Game"
 		return score + "   (best of 3)"
@@ -1057,9 +1164,9 @@ func _record_match_result(winner: int) -> String:
 		coins += 1
 		_save_progress()
 		_log("You won the match! +1 coin.")
-		return score + "\n\nYou won the match!  +1 coin  (%d total)" % coins
-	_log("%s won the match." % OPPONENT_2P)
-	return score + "\n\n%s won the match." % OPPONENT_2P
+		return score + "\nYou won the match!  +1 coin  (%d total)" % coins
+	_log("%s won the match." % opponent_name)
+	return score + "\n%s won the match." % opponent_name
 
 
 func _match_over() -> bool:
@@ -1077,7 +1184,7 @@ func _on_again_pressed() -> void:
 
 func _refresh_match_label() -> void:
 	match_label.visible = num_players == 2
-	match_label.text = "Game %d  ·  You %d – %d %s" % [match_game, match_wins[0], match_wins[1], OPPONENT_2P]
+	match_label.text = "Game %d  ·  You %d – %d %s" % [match_game, match_wins[0], match_wins[1], opponent_name]
 
 
 func _outfit(id: String) -> Dictionary:
@@ -1091,6 +1198,8 @@ func _outfit(id: String) -> Dictionary:
 func _update_portrait() -> void:
 	portrait.visible = num_players == 2 and table.visible
 	nameplate.visible = portrait.visible
+	affection_label.visible = portrait.visible
+	_refresh_affection_label()
 	_refresh_match_label()
 	if portrait.visible:
 		portrait.texture = load(_outfit(selected_outfit).path)
@@ -1126,7 +1235,7 @@ func _build_wardrobe() -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 14)
 	center.add_child(box)
-	box.add_child(_make_label("%s's Wardrobe" % OPPONENT_2P, 44, Color(1, 0.9, 0.4)))
+	box.add_child(_make_label("%s's Wardrobe" % opponent_name, 44, Color(1, 0.9, 0.4)))
 	wardrobe_coins_label = _make_label("", 20, Color(1, 0.85, 0.2))
 	box.add_child(wardrobe_coins_label)
 	var row := HBoxContainer.new()
@@ -1161,7 +1270,7 @@ func _show_wardrobe() -> void:
 
 func _refresh_wardrobe() -> void:
 	wardrobe_coins_label.text = "Coins: %d   ·   Win a best-of-3 match against %s to earn a coin" % [
-		coins, OPPONENT_2P]
+		coins, opponent_name]
 	for o in OUTFITS:
 		var slot: Dictionary = wardrobe_slots[o.id]
 		var button: Button = slot.button
@@ -1194,6 +1303,7 @@ func _load_progress() -> void:
 	if cfg.load(save_path) != OK:
 		return
 	coins = cfg.get_value("progress", "coins", 0)
+	affection = cfg.get_value("progress", "affection", 0)
 	unlocked = cfg.get_value("progress", "unlocked", ["jessica"])
 	selected_outfit = cfg.get_value("progress", "selected_outfit", "jessica")
 	# Saves from before the character was named used "abg" ids.
@@ -1208,4 +1318,141 @@ func _save_progress() -> void:
 	cfg.set_value("progress", "coins", coins)
 	cfg.set_value("progress", "unlocked", unlocked)
 	cfg.set_value("progress", "selected_outfit", selected_outfit)
+	cfg.set_value("progress", "affection", affection)
 	cfg.save(save_path)
+
+
+# ============================================================================
+# Jessica: dialogue, affection, signature power-up, trivia, gifts
+# ============================================================================
+
+## Shows a line from her profile for `event` in her speech bubble. Minor lines
+## don't interrupt one she is still saying unless `force` is set.
+func _say(event: String, force := false) -> void:
+	if not force and speech_bubble.visible and speech_bubble.modulate.a > 0.5:
+		return
+	_say_text(character.line(event, affection))
+
+
+func _say_text(text: String) -> void:
+	if text == "" or num_players != 2:
+		return
+	last_speech = text
+	_log("%s: “%s”" % [opponent_name, text])
+	speech_label.text = text
+	speech_bubble.visible = table.visible
+	speech_bubble.modulate.a = 1.0
+	if speech_tween:
+		speech_tween.kill()
+	speech_tween = create_tween()
+	speech_tween.tween_interval(3.5)
+	speech_tween.tween_property(speech_bubble, "modulate:a", 0.0, 0.6)
+	speech_tween.tween_callback(func(): speech_bubble.visible = false)
+
+
+func _react_to_play(p: int, combo: Dictionary, cards: Array) -> void:
+	var bomb: bool = combo.type == Rules.Type.QUAD or combo.type == Rules.Type.DOUBLE_SEQ
+	if p == HUMAN:
+		if bomb:
+			_say("on_player_bomb", true)
+		elif cards.any(func(c): return Rules.rank(c) == Rules.RANK_TWO) and hands[HUMAN].size() <= 2:
+			_say("on_player_saved_two", true)
+	else:
+		her_round_best = maxi(her_round_best, Rules.RANK_TWO if bomb else Rules.rank(combo.top))
+
+
+## Round-end reactions and her signature Lead Steal: she uses it once per game,
+## right after losing a round she thought she'd win (she'd played a King or better).
+## Returns who leads the new round.
+func _jessica_round_end(round_winner: int, leader: int) -> int:
+	var her := 1
+	var thought_she_won := her_round_best >= Rules.RANK_NAMES.find("K")
+	if character.signature_powerup() == "lead_steal" and not her_powerup_used \
+			and round_winner != her and leader != her and thought_she_won and hands[her].size() > 0:
+		her_powerup_used = true
+		_log("%s used Lead Steal!" % opponent_name)
+		_say("on_her_powerup", true)
+		return her
+	if randf() < 0.5:
+		_say("on_player_win_hand" if round_winner == HUMAN else "on_player_lose_hand")
+	return leader
+
+
+func _add_affection(amount: int, reason: String) -> void:
+	var before := affection
+	affection = clampi(affection + amount, 0, character.affection_max())
+	if affection == before:
+		return
+	_log("%s affection %+d %s (%d/%d)." % [opponent_name, affection - before, reason, affection,
+		character.affection_max()])
+	var old_stage: Dictionary = character.stage(before)
+	var new_stage: Dictionary = character.stage(affection)
+	if new_stage.get("min", 0) > old_stage.get("min", 0):
+		_log("%s is now: %s" % [opponent_name, new_stage.label])
+		for key in new_stage.get("unlocks", []):
+			if STAGE_OUTFIT_UNLOCKS.has(key) and not unlocked.has(STAGE_OUTFIT_UNLOCKS[key]):
+				unlocked.append(STAGE_OUTFIT_UNLOCKS[key])
+				_log("Unlocked the %s outfit." % _outfit(STAGE_OUTFIT_UNLOCKS[key]).name)
+	_save_progress()
+	_refresh_affection_label()
+
+
+func _refresh_affection_label() -> void:
+	affection_label.text = "Affection %d/%d  ·  %s" % [affection, character.affection_max(),
+		character.stage(affection).get("label", "")]
+
+
+func _offer_trivia() -> void:
+	var questions: Array = character.trivia()
+	if questions.is_empty():
+		return
+	trivia_question = questions.pick_random()
+	var answers: Array = trivia_question.wrong.duplicate()
+	answers.append(trivia_question.answer)
+	answers.shuffle()
+	trivia_label.text = "%s asks: %s" % [opponent_name, trivia_question.question]
+	for i in trivia_buttons.size():
+		trivia_buttons[i].text = answers[i] if i < answers.size() else ""
+		trivia_buttons[i].visible = i < answers.size()
+		trivia_buttons[i].disabled = false
+	trivia_result.text = "Get it right for +%d affection." % character.affection_value("liked")
+	trivia_box.visible = true
+
+
+func _on_trivia_answer(i: int) -> void:
+	var picked: String = trivia_buttons[i].text
+	for b in trivia_buttons:
+		b.disabled = true
+	if picked == trivia_question.answer:
+		trivia_result.text = "Correct!  +%d affection" % character.affection_value("liked")
+		_add_affection(character.affection_value("liked"), "for knowing her")
+	else:
+		var line: String = character.line("on_trivia_wrong", affection)
+		trivia_result.text = "“%s”  (It was: %s)" % [line, trivia_question.answer]
+
+
+## Buys a gift with coins. Returns her reaction for the profile screen, or "" if unaffordable.
+func give_gift(id: String) -> String:
+	if coins < GIFT_COST:
+		return ""
+	coins -= GIFT_COST
+	var category: String = character.gift_category(id)
+	var amount: int = character.affection_value(category)
+	_add_affection(amount, "for the %s" % Character.pretty(id).to_lower())
+	_save_progress()
+	var line := ""
+	if category == "loved":
+		line = character.line("on_gift_loved", affection)
+	elif category == "disliked":
+		line = character.line("on_gift_disliked", affection)
+	var verdicts := {"loved": "She loved it!", "liked": "She liked it.", "disliked": "She didn't like that.",
+		"neutral": "She accepted it."}
+	return "%s  (%+d affection)%s" % [verdicts[category], amount, "\n“%s”" % line if line != "" else ""]
+
+
+func _show_profile() -> void:
+	menu.visible = false
+	menu_coins_label.visible = false
+	wardrobe.visible = false
+	profile_screen.visible = true
+	profile_screen.refresh()
