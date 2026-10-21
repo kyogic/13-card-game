@@ -6,33 +6,68 @@ A playable prototype of the Vietnamese card game **Tiến Lên** built with **Go
 - **4 Players:** you against 3 CPU opponents, full 52-card deck, 13 cards each.
 - **2 Players:** you against 1 CPU, half the deck. 26 cards are dealt (13 each) and the rest stay out of play.
 
-## 2-player: Jessica
-Your 2-player opponent is **Jessica Trần ("Jess")**. Everything about her comes from her character profile, `data/characters/jessica.json`; edit that file to change her lines, gifts, trivia or play style.
+## Demo Day (dating layer)
+Press **Demo Day** on the main menu.
 
-- **Table:** the game sits in its own framed table. Jessica stands outside it, full-length, with her name and affection underneath.
-- **Matches:** 2-player games are a best-of-3 match. The previous game's winner leads the next one, and winning a match earns 1 coin.
-- **Dialogue:** her lines appear in a speech bubble. She reacts when:
-  - a match starts
-  - a round ends
-  - you play a bomb, or a 2 you saved until late
-  - you use your first power-up of the game
-  - she uses her own power-up
-  - a game ends
+You have one day with four parts: Morning, Afternoon, Evening and Night. In each part, pick where to go.
+- **If Jessica is there,** you can:
+  - **Talk:** small talk that hints at her trivia answers. Your reply is good, neutral or bad.
+  - **Quiz me:** she asks one of her trivia questions.
+  - **Give gift:** from your starting gifts.
+  - **Ask on a date:** plays a best-of-3 Tiến Lên match against her. She reacts to card events in a speech bubble.
+- **If she isn't there,** you lose a little time.
 
-  She only calls you "anh" once her affection unlocks it.
-- **Play style:** the profile's `card_ai.tuning` makes her aggressive. She spends 2s early, rarely passes on purpose, and loves leading with straights, sometimes as a bluff.
-- **Signature power-up:** she uses **Lead Steal** once per game, right after losing a round she thought she'd win (she'd played a King or better).
-- **Affection (0–100):**
-  - Each match you finish with her gives +2.
-  - After each match she asks a trivia question; a right answer gives +7.
-  - Gifts from her profile page cost 1 coin: loved +15, liked +7, disliked −5.
-  - Affection is saved with your progress.
-- **Affection stages:** Unimpressed → Curious → Into it → Catching feelings → Ride or die.
-  - Into it unlocks the Street outfit for free and the "anh" nickname.
-  - Catching feelings unlocks the story behind her bracelet on her profile page.
-  - Dates and scenes are listed as "soon".
-- **Wardrobe:** Classic is free. Spend 1 coin to unlock each of her other outfits: Smile, Street, Pajamas, Maid and Lace.
-- **Saving:** coins, affection, unlocked outfits and the selected outfit are saved in `user://save.cfg`. Saves from before she was named Jessica are migrated automatically.
+Some places stay locked until her affection reaches a stage. When the day ends, a summary shows:
+- affection gained
+- the stage reached
+- unlocks earned
+- your match record
+
+**Debug panel:** press **F1** (or `` ` ``) to:
+- set her affection
+- jump to the next time slot
+- fire card events by hand
+
+**Architecture.** The card game and the dating layer never call each other. They only send and receive signals through the `EventBus` autoload:
+- The card game emits:
+  - `match_started` and `match_ended` (with the winner)
+  - `hand_won` and `hand_lost`: a "hand" is a round
+  - `bomb_played` (with who played it)
+  - `two_saved`: once per game, when you win a round still holding a 2 you were dealt, with 3 or fewer cards left
+  - `powerup_used` (with who used it and which one)
+- The dating layer asks for a date with `date_requested`. It gets control back with `date_closed`.
+
+| Piece | File |
+|---|---|
+| Event bus | `scripts/core/event_bus.gd` |
+| Tuning numbers (affection, time costs, thresholds, UI timings, which card event triggers which line) | `data/config/tuning.json`, read by `scripts/core/config.gd` |
+| Day state, in memory only, with `to_dict`/`from_dict` for a future save | `scripts/core/game_state.gd` |
+| Character registry | `scripts/dating/character_db.gd`, which loads every `data/characters/*.json` and optional `data/talk/<id>.json` |
+| Affection and stage unlocks | `scripts/dating/affection_system.gd` |
+| Day, slots, schedule, time costs, locks | `scripts/dating/calendar.gd`, using `data/demo_day.json` and `data/schedule.json` |
+| Screens | `scripts/ui/`: calendar, conversation, dialogue box (typewriter + subtitles), reaction bubble, affection meter, summary, debug panel |
+| Ties the screens together | `scripts/dating/dating_layer.gd` |
+| Root scene (card game with the dating layer on top) | `scenes/app.tscn` |
+
+**Adding a character:**
+1. Add `data/characters/<id>.json` in the same shape as `jessica.json`.
+2. Optionally add `data/talk/<id>.json` with small-talk exchanges.
+3. Add a schedule entry in `data/schedule.json`.
+
+No code changes are needed; the tests load an extra character from data to check this.
+
+Dialogue lines can be a plain string or `{"text": ..., "translation": ...}`. The translation is shown as an English subtitle when the conversation screen's subtitles toggle is on.
+
+### Jessica
+Her profile is `data/characters/jessica.json`.
+- **Card AI:** comes from `card_ai.tuning`: aggressive, spends her 2s early, loves straights.
+- **Signature power-up:** Lead Steal, once per game, after losing a round she thought she'd win.
+- **Schedule:**
+  - Morning: phở spot
+  - Afternoon: boba shop (needs Curious, 20)
+  - Evening: night market (needs Catching feelings, 70)
+  - Night: nowhere
+- **Wardrobe:** 2-player matches from the main menu still earn coins for unlocking her outfits. Those are saved separately in `user://save.cfg`.
 
 ### Character art layout
 ```
@@ -85,10 +120,10 @@ Suit Up, Lucky Draw and Wild Card can't be used on the card you're required to o
 | `scripts/rules.gd` | Card encoding, combination detection, beat rules, and combo enumeration |
 | `scripts/ai.gd` | CPU strategy: cheapest legal play; saves 2s and bombs unless an opponent is close to going out |
 | `scripts/card_view.gd` | Card drawn in code; clickable |
-| `scripts/main.gd` | Menu, table UI, turn flow, matches, power-ups, and Jessica's in-game behaviour |
-| `scripts/character.gd` | Loads a character profile JSON (dialogue, affection stages, gifts, trivia, AI tuning) |
-| `scripts/profile_screen.gd` | Jessica's profile page: affection, unlocks, gifts |
-| `data/characters/jessica.json` | Jessica's character profile |
+| `scripts/main.gd` | Card game: menu, table UI, turn flow, matches, power-ups; emits card events |
+| `scripts/character.gd` | Reads a character profile JSON (dialogue, stages, gifts, trivia, AI tuning) |
+| `scripts/core/`, `scripts/dating/`, `scripts/ui/` | Dating layer (see Demo Day above) |
+| `tests/dating_test.gd` | Dating layer: affection, dialogue, calendar, summary, debug panel, a second character, and a real date |
 | `tests/sim_test.gd` | Headless rule tests plus 300 CPU-only games |
 | `tests/ui_test.gd` | Plays full games through the real scene, driving the human seat with Hint |
 
@@ -96,6 +131,7 @@ Run the tests with:
 ```
 godot --headless --path . --script res://tests/sim_test.gd
 godot --headless --path . --script res://tests/ui_test.gd
+godot --headless --path . --script res://tests/dating_test.gd
 ```
 
 ## Not in the prototype yet

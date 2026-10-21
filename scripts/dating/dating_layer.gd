@@ -5,12 +5,16 @@ extends Control
 
 const ConversationScreen := preload("res://scripts/ui/conversation_screen.gd")
 const CalendarScreen := preload("res://scripts/ui/calendar_screen.gd")
+const SummaryScreen := preload("res://scripts/ui/summary_screen.gd")
+const DebugPanel := preload("res://scripts/ui/debug_panel.gd")
 const ReactionBubble := preload("res://scripts/ui/reaction_bubble.gd")
 const AffectionMeter := preload("res://scripts/ui/affection_meter.gd")
 
 var screens: Control           # opaque full-screen container for the day's screens
 var calendar
 var conversation
+var summary
+var debug_panel
 var bubble
 var date_meter
 
@@ -30,6 +34,9 @@ func _init() -> void:
 	conversation.action_taken.connect(_on_action_taken)
 	conversation.left.connect(_show_calendar)
 	screens.add_child(conversation)
+	summary = SummaryScreen.new()
+	summary.closed.connect(hide_all)
+	screens.add_child(summary)
 
 	# During a date: her speech bubble (top-left) and affection meter (under her name).
 	bubble = ReactionBubble.new()
@@ -44,6 +51,8 @@ func _init() -> void:
 	date_meter.offset_top = -36
 	date_meter.offset_bottom = -6
 	add_child(date_meter)
+	debug_panel = DebugPanel.new()
+	add_child(debug_panel)
 
 
 func _ready() -> void:
@@ -70,6 +79,7 @@ func start_day() -> void:
 func _show_calendar() -> void:
 	screens.visible = true
 	conversation.visible = false
+	summary.visible = false
 	calendar.visible = true
 	calendar.refresh()
 
@@ -110,7 +120,7 @@ func _on_time_advanced(info: Dictionary) -> void:
 		return
 	# Slot used up: whatever was happening, you're back to choosing where to go.
 	calendar.show_message("Time flies. It's %s now." % Calendar.slot_name().to_lower())
-	if screens.visible and not GameState.in_date:
+	if screens.visible and not GameState.in_date and not summary.visible:
 		_show_calendar()
 
 
@@ -137,12 +147,27 @@ func _on_date_closed(info: Dictionary) -> void:
 		GameState.log_event("match", "Left the date early.")
 	screens.visible = true
 	Calendar.end_slot()  # a date uses up the rest of the slot
-	if not Calendar.day_over:
+	if Calendar.day_over:
+		_show_summary()
+	else:
 		_show_calendar()
 
 
 func _on_day_ended(_info: Dictionary) -> void:
-	# The summary screen arrives in the next step; for now, return to the calendar.
-	calendar.show_message("The day is over.")
 	if not GameState.in_date:
-		_show_calendar()
+		_show_summary()  # during a date it shows once the date closes
+
+
+func _show_summary() -> void:
+	screens.visible = true
+	calendar.visible = false
+	conversation.visible = false
+	summary.visible = true
+	summary.refresh()
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo \
+			and event.keycode in [KEY_F1, KEY_QUOTELEFT]:
+		debug_panel.toggle()
+		get_viewport().set_input_as_handled()

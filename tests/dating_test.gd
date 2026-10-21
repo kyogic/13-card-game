@@ -293,6 +293,126 @@ func _calendar_checks() -> void:
 	await process_frame
 	check(cal.day_over and ended.size() == 1, "after night the day ends")
 
+	# End-of-day summary.
+	check(layer.summary.visible and not layer.calendar.visible, "summary shown when the day ends")
+	var text: String = layer.summary.body.text
+	var a: int = affection.value("jessica")
+	check(("Affection: 0 → %d  (+%d)" % [a, a]) in text, "summary: affection gained")
+	check("Stage: Curious  (new!)" in text, "summary: stage reached")
+	check("Boba Date Location" in text and not ("Intro Scene" in text), "summary: only unlocks earned today")
+	check("1 won, 0 lost" in text and "Trivia:  1 of 1 right" in text and "Gifts given: 1" in text,
+		"summary: matches, trivia, gifts")
+	layer.summary.closed.emit()
+	check(not layer.screens.visible and main.menu.visible, "summary returns to the main menu")
+	await _debug_checks()
+	await _second_character_checks()
+	await _real_date_check()
+
+
+## Plays an actual Tiến Lên date to the end (her AI vs. Hint for you) from the calendar.
+func _real_date_check() -> void:
+	var seen := {}
+	var recs := {}
+	for e in bus.CARD_EVENTS + ["date_closed"]:
+		recs[e] = func(_i): seen[e] = seen.get(e, 0) + 1
+		bus.connect(e, recs[e])
+	main.CPU_DELAY = 0.0
+	bus.fire("demo_day_requested")
+	await process_frame
+	layer.calendar.location_buttons.pho_spot.pressed.emit()
+	await _drain()
+	convo.buttons.date.pressed.emit()
+	await _drain()
+	var guard := 0
+	while not seen.has("date_closed") and guard < 20000:
+		guard += 1
+		if main.overlay.visible:
+			main._on_again_pressed()  # Next Game / Continue the day
+		elif main.current == main.HUMAN and main.hands[main.HUMAN].size() > 0:
+			main._on_hint_pressed()
+			if main._selected_cards().is_empty():
+				main._on_pass_pressed()
+			else:
+				main._on_play_pressed()
+		await process_frame
+	check(seen.get("match_started", 0) == 1 and seen.get("match_ended", 0) == 1, "real date: one match")
+	check(seen.get("hand_won", 0) + seen.get("hand_lost", 0) > 3, "real date: hand events fired %s" % [seen])
+	check(state.match_record.wins + state.match_record.losses == 1, "real date recorded")
+	var base: int = config.int_value("affection.match_won" if state.match_record.wins == 1 else "affection.match_lost")
+	check(affection.value("jessica") >= base, "real date affection (match result plus any bonuses)")
+	check(cal.slot_name() == "Afternoon" and layer.calendar.visible, "real date ends the slot")
+	print("real date events: ", seen, "  affection: ", affection.value("jessica"))
+	for e in recs:
+		bus.disconnect(e, recs[e])
+
+
+func _debug_checks() -> void:
+	var dbg = layer.debug_panel
+	var key := InputEventKey.new()
+	key.keycode = KEY_F1
+	key.pressed = true
+	layer._input(key)
+	check(dbg.visible, "F1 opens the debug panel")
+	bus.fire("demo_day_requested")
+	await process_frame
+	var reached := []
+	var on_reached := func(i): reached.append(i.stage.label)
+	bus.affection_stage_reached.connect(on_reached)
+	dbg.affection_spin.value = 75
+	dbg.get_children()[0].find_children("*", "Button", true, false).filter(
+		func(b): return b.text == "Set")[0].pressed.emit()
+	check(affection.value("jessica") == 75 and reached == ["Curious", "Into it", "Catching feelings"],
+		"debug sets affection and fires stage events")
+	check(cal.location_unlocked("night_market"), "debug affection unlocks the night market")
+	bus.affection_stage_reached.disconnect(on_reached)
+	var slot_before: int = state.slot_index
+	dbg.find_children("*", "Button", true, false).filter(func(b): return b.text == "Next slot")[0].pressed.emit()
+	check(state.slot_index == slot_before + 1, "debug jumps a time slot")
+	# Firing card events by hand: with "treat as a date", a player bomb gives +2 and she reacts.
+	dbg.in_date_check.button_pressed = true
+	dbg.fire_card_event("bomb_played", {"by": "player"})
+	await process_frame
+	check(affection.value("jessica") == 77, "debug card event affects affection in a date")
+	check(layer.bubble.last_text in characters.profile("jessica").data.dialogue.on_player_bomb,
+		"debug card event triggers her reaction")
+	dbg.in_date_check.button_pressed = false
+	layer._input(key)
+	check(not dbg.visible, "F1 closes the debug panel")
+	layer.hide_all()
+
+
+## A second character needs only data: a profile JSON plus a schedule entry.
+func _second_character_checks() -> void:
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://test_chars"))
+	var mai := {"id": "mai", "name": "Mai Nguyễn", "date_locations": ["pho_spot"],
+		"affection": {"max": 100, "stages": [{"min": 0, "label": "Shy", "unlocks": []},
+			{"min": 10, "label": "Warming up", "unlocks": ["mai_secret"]}]},
+		"gifts": {"loved": ["pho_takeout"], "affection_values": {"loved": 12}},
+		"trivia": [{"question": "Favorite soup?", "answer": "Phở", "wrong": ["Bún bò", "Hủ tiếu"]}],
+		"dialogue": {"greeting": ["Oh! Hi."], "on_player_bomb": ["Whoa!"]},
+		"card_ai": {"tuning": {"aggression": 0.1}}}
+	var f := FileAccess.open("user://test_chars/mai.json", FileAccess.WRITE)
+	f.store_string(JSON.stringify(mai))
+	f.close()
+	check(characters.load_character("user://test_chars/mai.json") == "mai", "new character registers")
+	cal.schedule.characters["mai"] = {"morning": "pho_spot"}
+	bus.fire("demo_day_requested")
+	await process_frame
+	check(cal.characters_at("pho_spot").has("mai"), "schedule entry places her")
+	check(layer.calendar.meters.get_child_count() >= 1, "calendar meters")
+	convo.open("mai", "pho_spot", cal.location_name("pho_spot"))
+	await _drain()
+	check(convo.title_label.text.begins_with("Mai") and convo.buttons.talk.disabled
+		and not convo.buttons.quiz.disabled and not convo.buttons.date.disabled, "her conversation works")
+	bus.fire("gift_given", {"character_id": "mai", "gift_id": "pho_takeout", "category": "loved"})
+	check(affection.value("mai") == 12 and state.char_state("mai").unlocks.has("mai_secret"),
+		"her affection, stages and unlocks come from her JSON")
+	check(characters.profile("mai").to_opponent().tuning.aggression == 0.1, "her card AI tuning")
+	characters.profiles.erase("mai")
+	cal.schedule.characters.erase("mai")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_chars/mai.json"))
+	layer.hide_all()
+
 
 func Rules_analyze_quad() -> Dictionary:
 	var R = load("res://scripts/rules.gd")

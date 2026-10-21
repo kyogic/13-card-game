@@ -82,7 +82,10 @@ func refresh() -> void:
 		var reason: String = Calendar.lock_reason(id)
 		b.disabled = reason != ""
 		b.text = Calendar.location_name(id) + ("   [locked: %s]" % reason if reason != "" else "")
-	if meters.get_child_count() == 0:
+	if meters.get_child_count() != Characters.ids().size():
+		for m in meters.get_children():
+			meters.remove_child(m)
+			m.queue_free()
 		for cid in Characters.ids():
 			var m = AffectionMeter.new()
 			meters.add_child(m)

@@ -224,6 +224,8 @@ func _on_talk() -> void:
 		_show_choices(ex.choices.map(func(c): return c.text), func(i):
 			var choice: Dictionary = ex.choices[i]
 			GameState.char_state(character_id).talks_seen.append(ex.id)
+			GameState.log_event("talk", "Talked with %s about %s (%s answer)." % [profile.first_name(),
+				ex.id.replace("_", " "), choice.quality])
 			EventBus.fire("talk_choice_made", {"character_id": character_id, "quality": choice.quality,
 				"exchange": ex.id})
 			_play(_lines(choice.reply), func(): action_taken.emit("talk"))))
@@ -246,6 +248,8 @@ func _on_quiz() -> void:
 	_show_choices(options, func(i):
 		var correct: bool = options[i] == q.answer
 		GameState.char_state(character_id).trivia_answered.append(q.question)
+		GameState.log_event("trivia_correct" if correct else "trivia_wrong", "%s \"%s\" — %s." % [
+			"Got" if correct else "Missed", q.question, "right" if correct else "wrong"])
 		EventBus.fire("trivia_answered", {"character_id": character_id, "question": q.question,
 			"correct": correct})
 		if correct:

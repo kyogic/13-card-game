@@ -12,17 +12,22 @@ var talks := {}                # id -> Array of small-talk exchanges
 
 func _init() -> void:
 	for file in DirAccess.get_files_at(CHAR_DIR):
-		if not file.ends_with(".json"):
-			continue
-		var profile = Character.load_profile(CHAR_DIR + file)
-		if profile.id() == "":
-			continue
-		profiles[profile.id()] = profile
-		var talk_path: String = TALK_DIR + profile.id() + ".json"
-		if FileAccess.file_exists(talk_path):
-			var parsed = JSON.parse_string(FileAccess.get_file_as_string(talk_path))
-			if parsed is Dictionary:
-				talks[profile.id()] = parsed.get("exchanges", [])
+		if file.ends_with(".json"):
+			load_character(CHAR_DIR + file)
+
+
+## Registers one character file (and its talk file, if any). Returns the id or "".
+func load_character(path: String, talk_dir := TALK_DIR) -> String:
+	var profile = Character.load_profile(path)
+	if profile.id() == "":
+		return ""
+	profiles[profile.id()] = profile
+	var talk_path: String = talk_dir + profile.id() + ".json"
+	if FileAccess.file_exists(talk_path):
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string(talk_path))
+		if parsed is Dictionary:
+			talks[profile.id()] = parsed.get("exchanges", [])
+	return profile.id()
 
 
 func ids() -> Array:

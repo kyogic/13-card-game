@@ -7,7 +7,8 @@ var slot_index := 0
 var time_left := 0
 var location := ""             # where the player is this slot ("" = choosing)
 var in_date := false           # a Tiến Lên date is being played
-## character id -> {affection, unlocks, stages, trivia_answered, talks_seen, start_affection}
+## character id -> {affection, unlocks, stages, trivia_answered, talks_seen, start_affection,
+## start_unlocks}
 var characters := {}
 var inventory := {}            # gift id -> count
 var match_record := {"wins": 0, "losses": 0}
@@ -30,7 +31,7 @@ func reset(starter_inventory: Dictionary = {}) -> void:
 func char_state(id: String) -> Dictionary:
 	if not characters.has(id):
 		characters[id] = {"affection": 0, "unlocks": [], "stages": [], "trivia_answered": [],
-			"talks_seen": [], "start_affection": 0}
+			"talks_seen": [], "start_affection": 0, "start_unlocks": []}
 	return characters[id]
 
 
@@ -55,3 +56,7 @@ func from_dict(d: Dictionary) -> void:
 	match_record = d.get("match_record", {"wins": 0, "losses": 0}).duplicate()
 	day_log = d.get("day_log", []).duplicate(true)
 	settings = d.get("settings", settings).duplicate()
+
+
+func count_log(kind: String) -> int:
+	return day_log.filter(func(e): return e.kind == kind).size()

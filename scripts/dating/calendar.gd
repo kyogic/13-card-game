@@ -26,6 +26,7 @@ func start_day() -> void:
 	for id in Characters.ids():
 		Affection.ensure(id)
 		GameState.char_state(id).start_affection = Affection.value(id)
+		GameState.char_state(id).start_unlocks = GameState.char_state(id).unlocks.duplicate()
 	day_over = false
 	GameState.slot_index = 0
 	GameState.time_left = units_per_slot()
