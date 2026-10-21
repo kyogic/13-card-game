@@ -227,22 +227,15 @@ func _timer_unit_checks() -> void:
 
 
 func _match_and_wardrobe_checks() -> void:
-	check(main.coins == 0 and main.selected_outfit_for("jessica") == "jessica"
-		and main.selected_outfit_for("arisa") == "arisa", "fresh save: each girl in her Classic outfit")
-	check(main.outfits.keys() == ["jessica", "arisa"] and main.outfits.arisa.size() == 5,
-		"outfits come from data/outfits.json")
-	check(main.unlocked.has("jessica") and main.unlocked.has("arisa"), "each girl's first outfit is free")
-	check(main.outfits.jessica.size() == 5 and not main.outfits.jessica.any(func(o): return o.id == "jessica_smile"),
-		"five outfits, no Smile")
-	for o in main._all_outfits():
-		check(load(o.path) is Texture2D, "outfit image loads: %s" % o.path)
+	check(not ("coins" in main) and not ("unlocked" in main), "the coin system is gone")
 	main._start_match()
 	check(main.names[1] == "Jessica" and main.portrait.visible and main.nameplate.visible, "Jessica shown in 2-player")
+	check(main.portrait.texture != null, "Quickplay gets her portrait from the Wardrobe")
 	check(main.portrait.get_parent() != main.table, "Jessica stands outside the table frame")
 	check(main.table.get_global_rect().position.x >= main.portrait.get_global_rect().end.x,
 		"table frame is to the right of Jessica")
 
-	# You win game 1, Jessica wins game 2, you win game 3 -> match won, +1 coin.
+	# You win game 1, Jessica wins game 2, you win game 3 -> match won (no rewards in Quickplay).
 	main._record_match_result(0)
 	check(main.again_button.text == "Next Game" and not main._match_over(), "match continues after 1-0")
 	main._on_again_pressed()
@@ -251,102 +244,11 @@ func _match_and_wardrobe_checks() -> void:
 	main._record_match_result(1)
 	main._on_again_pressed()
 	check(main.match_game == 3, "game 3 played at 1-1")
-	main._record_match_result(0)
-	check(main._match_over() and main.coins == 1 and main.again_button.text == "New Match", "match won gives coin")
-
-	# Losing a match gives nothing.
+	var summary: String = main._record_match_result(0)
+	check(main._match_over() and main.again_button.text == "New Match" and "You won the match!" in summary
+		and not ("coin" in summary), "match won, no coin")
 	main._on_again_pressed()
 	check(main.match_game == 1 and main.match_wins == [0, 0], "new match resets score")
-	main._record_match_result(1)
-	main._record_match_result(1)
-	check(main._match_over() and main.coins == 1, "lost match gives no coin")
-
-	# Spend the coin on an outfit; it becomes selected and is saved.
-	main._show_wardrobe()
-	check(not main.wardrobe_slots["jessica_maid"].button.disabled, "can afford unlock")
-	main._on_outfit_pressed("jessica_maid")
-	check(main.coins == 0 and main.unlocked.has("jessica_maid") and main.selected_outfit_for("jessica") == "jessica_maid",
-		"unlock")
-	check(main.wardrobe_slots["jessica_lace"].button.disabled, "can't unlock without coins")
-	main._on_outfit_pressed("jessica_lace")
-	check(not main.unlocked.has("jessica_lace"), "no free unlocks")
-	var reloaded = load("res://scenes/main.tscn").instantiate()
-	reloaded.save_path = TEST_SAVE
-	root.add_child(reloaded)
-	check(reloaded.selected_outfit_for("jessica") == "jessica_maid" and reloaded.unlocked.has("jessica_maid"),
-		"progress saved")
-	reloaded.queue_free()
-	# Old saves used "abg" ids; they are migrated on load.
-	var old_cfg := ConfigFile.new()
-	old_cfg.set_value("progress", "coins", 3)
-	old_cfg.set_value("progress", "unlocked", ["abg", "abg_maid"])
-	old_cfg.set_value("progress", "selected_outfit", "abg_maid")
-	old_cfg.save("user://test_old_save.cfg")
-	var migrated = load("res://scenes/main.tscn").instantiate()
-	migrated.save_path = "user://test_old_save.cfg"
-	root.add_child(migrated)
-	check(migrated.unlocked == ["jessica", "jessica_maid", "arisa"] and migrated.selected_outfit_for("jessica") == "jessica_maid",
-		"old abg save migrates")
-	migrated.queue_free()
-	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_old_save.cfg"))
-	# A save that had Smile unlocked/selected gets the coin back and falls back to Classic.
-	var smile_cfg := ConfigFile.new()
-	smile_cfg.set_value("progress", "coins", 0)
-	smile_cfg.set_value("progress", "unlocked", ["jessica", "jessica_smile", "jessica_maid"])
-	smile_cfg.set_value("progress", "selected_outfit", "jessica_smile")
-	smile_cfg.save("user://test_smile_save.cfg")
-	var refunded = load("res://scenes/main.tscn").instantiate()
-	refunded.save_path = "user://test_smile_save.cfg"
-	root.add_child(refunded)
-	check(refunded.unlocked == ["jessica", "jessica_maid", "arisa"] and refunded.coins == 0
-		and refunded.selected_outfit_for("jessica") == "jessica", "old save: Smile dropped, coins reset to 0, outfits kept")
-	refunded.queue_free()
-	# The reset happens once: a save already on the new coin version keeps its coins.
-	var v2 := ConfigFile.new()
-	v2.set_value("progress", "coins", 3)
-	v2.set_value("progress", "unlocked", ["jessica"])
-	v2.set_value("progress", "coins_version", main.COINS_VERSION)
-	v2.save("user://test_smile_save.cfg")
-	var kept = load("res://scenes/main.tscn").instantiate()
-	kept.save_path = "user://test_smile_save.cfg"
-	root.add_child(kept)
-	check(kept.coins == 3, "coins are only reset once")
-	kept.queue_free()
-	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_smile_save.cfg"))
-
-	# Dates: she shows up in a random unlocked outfit (never a locked one).
-	main.unlocked = ["jessica", "jessica_maid", "jessica_lace"]
-	var worn := {}
-	for i in 60:
-		worn[main.random_unlocked_outfit()] = true
-	check(worn.keys().size() == 3 and worn.keys().all(func(id): return main.unlocked.has(id)),
-		"random date outfits cover all unlocked ones: %s" % [worn.keys()])
-	main._on_date_requested({"opponent": main.opponent})
-	check(main.unlocked.has(main.date_outfit)
-		and main.portrait.texture.resource_path == main._outfit(main.date_outfit).path, "date shows her date outfit")
-	main.in_date = false
-	# Arisa: her own lineup, her own selection, her own random date outfits.
-	main.unlocked.append("arisa")
-	var real_opponent: Dictionary = main.opponent
-	main.coins = 1
-	main._show_wardrobe()
-	main.wardrobe_tabs.get_child(1).pressed.emit()
-	check(main.wardrobe_character == "arisa" and main.wardrobe_slots.size() == 5
-		and main.wardrobe_slots.has("arisa_muay_thai") and main.wardrobe_title.text == "Arisa's Wardrobe",
-		"wardrobe tab shows Arisa's outfits")
-	main._on_outfit_pressed("arisa_muay_thai")
-	check(main.selected_outfit_for("arisa") == "arisa_muay_thai" and main.coins == 0
-		and main.selected_outfit_for("jessica") != "arisa_muay_thai", "Arisa's selection is separate")
-	main._set_opponent({"id": "arisa", "name": "Arisa", "portrait": "res://assets/characters/arisa/default.png"})
-	worn = {}
-	for i in 60:
-		worn[main.random_unlocked_outfit()] = true
-	check(worn.keys().all(func(id): return id.begins_with("arisa")) and worn.keys().size() == 2,
-		"Arisa's date outfits are hers and unlocked: %s" % [worn.keys()])
-	main._set_opponent(real_opponent)
-	main.unlocked = ["jessica", "arisa"]
-	main._on_outfit_pressed("jessica")
-	check(main.selected_outfit_for("jessica") == "jessica", "re-select owned outfit for free")
 	main._show_menu()
 
 

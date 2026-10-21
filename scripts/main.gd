@@ -13,11 +13,6 @@ const PLACE_NAMES := ["1st", "2nd", "3rd", "4th"]
 const TURN_COLOR := Color(1.0, 0.85, 0.2)
 const IDLE_COLOR := Color(0.9, 0.95, 0.9)
 const MAX_POWERUP_USES := 2
-## Wardrobe outfits per character (data/outfits.json). The first of each is free.
-const OUTFITS_PATH := "res://data/outfits.json"
-const UNLOCK_COST := 1
-## Bumping this resets everyone's coins once on their next launch (outfits are kept).
-const COINS_VERSION := 2
 const MATCH_WINS_NEEDED := 2   # 2-player games are best of 3
 ## Opponent for 2-player games started from the menu (dates pass their own).
 const DEFAULT_OPPONENT_PATH := "res://data/characters/jessica.json"
@@ -63,12 +58,6 @@ var game_start_ms := 0
 
 # --- 2-player match + progression -------------------------------------------
 var save_path := "user://save.cfg"
-var coins := 0
-var unlocked: Array = ["jessica"]
-var outfits := {}              # character id -> [{id, name, path}], from OUTFITS_PATH
-var selected_outfits := {}     # character id -> outfit id picked in the Wardrobe
-var wardrobe_character := ""   # whose outfits the Wardrobe is showing
-var date_outfit := ""          # outfit she wore to the current date (random from unlocked)
 var pending_cpu_play: Array = []  # a CPU play decided ahead of its turn (her Second Wind)
 var match_wins := [0, 0]       # games won this match by [you, opponent]
 var match_game := 0            # which game of the match is being played
@@ -114,13 +103,6 @@ var music_player: AudioStreamPlayer
 var music_volume := 0.5        # 0..1, set by the main-menu slider and saved with progress
 var music_slider: HSlider
 var music_value_label: Label
-var menu_coins_label: Label
-var wardrobe: Control
-var wardrobe_coins_label: Label
-var wardrobe_slots := {}       # outfit id -> {image, button}, for the girl being shown
-var wardrobe_row: HBoxContainer
-var wardrobe_title: Label
-var wardrobe_tabs: HBoxContainer
 var portrait: TextureRect
 var nameplate: Label
 var menu_button: Button
@@ -139,14 +121,12 @@ func _ready() -> void:
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 	_set_opponent(Character.load_profile(DEFAULT_OPPONENT_PATH).to_opponent())
-	_load_outfits()
 	bus = get_node_or_null("/root/EventBus")
 	if bus:
 		bus.date_requested.connect(_on_date_requested)
 	_load_progress()
 	_start_music()
 	_build_menu()
-	_build_wardrobe()
 	_build_table()
 	_build_overlay()
 	_show_menu()
@@ -177,7 +157,7 @@ func _build_menu() -> void:
 	row.add_theme_constant_override("separation", 10)
 	var wardrobe_button := _make_button("Wardrobe", 20)
 	wardrobe_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	wardrobe_button.pressed.connect(_show_wardrobe)
+	wardrobe_button.pressed.connect(func(): if bus: bus.fire("wardrobe_requested"))
 	row.add_child(wardrobe_button)
 	var quit := _make_button("Quit", 20)
 	quit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -237,7 +217,7 @@ func _build_menu() -> void:
 	quick_page.add_child(_make_label("Quickplay", 30, Color(1, 0.85, 0.4)))
 	quick_page.add_child(_menu_button("4 Players  —  You vs 3 CPU (full deck)", "", 24, _start_game.bind(4)))
 	quick_page.add_child(_menu_button("2 Players  —  You vs %s (half deck, best of 3)" % opponent_name,
-		"Win the match to earn a coin for the Wardrobe", 24, _start_match))
+		"A quick best-of-3 match", 24, _start_match))
 	quick_page.add_child(_spacer(6))
 	quick_page.add_child(_make_label(
 		"Get rid of all your cards first.  3 is low, 2 is high.  Suits: Spades < Clubs < Diamonds < Hearts.\n" +
@@ -247,11 +227,6 @@ func _build_menu() -> void:
 		15, Color(0.85, 0.92, 0.85)))
 	quick_page.add_child(_menu_button("Back", "", 20, _show_menu_page.bind("main")))
 
-	menu_coins_label = _make_label("", 24, Color(1, 0.85, 0.2))
-	menu_coins_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	menu_coins_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	_set_offsets(menu_coins_label, -260, -20, 14, 50)
-	add_child(menu_coins_label)
 	_show_menu_page("main")
 
 
@@ -546,13 +521,10 @@ func _show_menu() -> void:
 	target_menu.hide()
 	game_running = false
 	menu.visible = true
-	wardrobe.visible = false
 	table.visible = false
 	portrait.visible = false
 	nameplate.visible = false
 	overlay.visible = false
-	menu_coins_label.visible = true
-	menu_coins_label.text = "Coins: %d" % coins
 
 
 # ============================================================================
@@ -560,6 +532,11 @@ func _show_menu() -> void:
 # ============================================================================
 
 func _start_match() -> void:
+	if not in_date:
+		# Quickplay: she wears the outfit picked in the Wardrobe (if the dating layer is present).
+		var wardrobe := get_node_or_null("/root/Wardrobe")
+		if wardrobe:
+			opponent["portrait"] = wardrobe.match_path(opponent.get("id", ""))
 	match_wins = [0, 0]
 	match_game = 0
 	last_game_winner = -1
@@ -616,7 +593,6 @@ func _start_game(players: int) -> void:
 			current = p
 
 	menu.visible = false
-	menu_coins_label.visible = false
 	overlay.visible = false
 	table.visible = true
 	_build_seats()
@@ -1174,7 +1150,7 @@ func _apply_card_powerup(key: String) -> void:
 
 
 # ============================================================================
-# 2-player match, coins and wardrobe
+# 2-player match
 # ============================================================================
 
 ## Records a finished 2-player game and returns the match summary for the results screen.
@@ -1187,10 +1163,8 @@ func _record_match_result(winner: int) -> String:
 		return score + "   (best of 3)"
 	again_button.text = "New Match"
 	if winner == HUMAN:
-		coins += 1
-		_save_progress()
-		_log("You won the match! +1 coin.")
-		return score + "\nYou won the match!  +1 coin  (%d total)" % coins
+		_log("You won the match!")
+		return score + "\nYou won the match!"
 	_log("%s won the match." % opponent_name)
 	return score + "\n%s won the match." % opponent_name
 
@@ -1215,51 +1189,16 @@ func _refresh_match_label() -> void:
 	match_label.text = "Game %d  ·  You %d – %d %s" % [match_game, match_wins[0], match_wins[1], opponent_name]
 
 
-func _load_outfits() -> void:
-	var parsed = JSON.parse_string(FileAccess.get_file_as_string(OUTFITS_PATH))
-	outfits = {}
-	if parsed is Dictionary:
-		for cid in parsed:
-			if parsed[cid] is Array and not parsed[cid].is_empty():
-				outfits[cid] = parsed[cid]
-	for cid in outfits:
-		if not unlocked.has(outfits[cid][0].id):
-			unlocked.append(outfits[cid][0].id)  # first outfit is free
-		selected_outfits[cid] = outfits[cid][0].id
-	wardrobe_character = outfits.keys()[0] if not outfits.is_empty() else ""
-
-
-func _all_outfits() -> Array:
-	var all := []
-	for cid in outfits:
-		all.append_array(outfits[cid])
-	return all
-
-
-func _outfit(id: String) -> Dictionary:
-	for o in _all_outfits():
-		if o.id == id:
-			return o
-	return {}
-
-
-## The outfit she wears in a quick match: the one selected for her in the Wardrobe.
-func selected_outfit_for(character_id: String) -> String:
-	return selected_outfits.get(character_id, "")
-
-
-## Shows her outfit, full-length, in 2-player games: the date's random outfit on a date,
-## otherwise the one selected in the Wardrobe.
+## Shows her full-length in 2-player games, in the portrait the match was given
+## (the dating layer passes her outfit for dates; Quickplay asks the Wardrobe).
 func _update_portrait() -> void:
 	portrait.visible = num_players == 2 and table.visible
 	nameplate.visible = portrait.visible
 	_refresh_match_label()
 	nameplate.text = opponent.get("full_name", opponent_name)
 	if portrait.visible:
-		# Wardrobe outfits (if this opponent has any) replace the profile portrait.
-		var outfit_id: String = date_outfit if in_date else selected_outfit_for(opponent.get("id", ""))
-		var path: String = _outfit(outfit_id).get("path", opponent.get("portrait", ""))
-		portrait.texture = load(path)
+		var path: String = opponent.get("portrait", "")
+		portrait.texture = load(path) if path != "" else null
 
 
 ## Frames the table. In 2-player games the frame moves right to leave room for Jessica,
@@ -1282,142 +1221,17 @@ func _apply_layout() -> void:
 		log_label.add_theme_font_size_override("font_size", 14)
 
 
-func _build_wardrobe() -> void:
-	wardrobe = Control.new()
-	wardrobe.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(wardrobe)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	wardrobe.add_child(center)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 12)
-	center.add_child(box)
-	wardrobe_title = _make_label("", 44, Color(1, 0.9, 0.4))
-	box.add_child(wardrobe_title)
-	wardrobe_tabs = HBoxContainer.new()
-	wardrobe_tabs.alignment = BoxContainer.ALIGNMENT_CENTER
-	wardrobe_tabs.add_theme_constant_override("separation", 8)
-	for cid in outfits:
-		var tab := _make_button(cid.capitalize(), 20)
-		tab.toggle_mode = true
-		tab.custom_minimum_size = Vector2(160, 0)
-		tab.pressed.connect(_show_wardrobe_for.bind(cid))
-		wardrobe_tabs.add_child(tab)
-	box.add_child(wardrobe_tabs)
-	wardrobe_coins_label = _make_label("", 20, Color(1, 0.85, 0.2))
-	box.add_child(wardrobe_coins_label)
-	wardrobe_row = HBoxContainer.new()
-	wardrobe_row.add_theme_constant_override("separation", 16)
-	wardrobe_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_child(wardrobe_row)
-	var back := _make_button("Back", 20)
-	back.pressed.connect(_show_menu)
-	box.add_child(back)
-
-
-func _show_wardrobe() -> void:
-	menu.visible = false
-	menu_coins_label.visible = false
-	wardrobe.visible = true
-	_show_wardrobe_for(wardrobe_character)
-
-
-## Shows one girl's outfits (the tabs switch between girls).
-func _show_wardrobe_for(character_id: String) -> void:
-	wardrobe_character = character_id
-	for c in wardrobe_row.get_children():
-		wardrobe_row.remove_child(c)
-		c.queue_free()
-	wardrobe_slots.clear()
-	for o in outfits.get(character_id, []):
-		var slot := VBoxContainer.new()
-		slot.add_theme_constant_override("separation", 6)
-		var image := TextureRect.new()
-		image.texture = load(o.path)
-		image.custom_minimum_size = Vector2(180, 290)
-		image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		slot.add_child(image)
-		slot.add_child(_make_label(o.name, 20, IDLE_COLOR))
-		var button := _make_button("", 18)
-		button.pressed.connect(_on_outfit_pressed.bind(o.id))
-		slot.add_child(button)
-		wardrobe_row.add_child(slot)
-		wardrobe_slots[o.id] = {"image": image, "button": button}
-	var ids := outfits.keys()
-	for i in wardrobe_tabs.get_child_count():
-		wardrobe_tabs.get_child(i).set_pressed_no_signal(ids[i] == character_id)
-	_refresh_wardrobe()
-
-
-func _refresh_wardrobe() -> void:
-	wardrobe_title.text = "%s's Wardrobe" % wardrobe_character.capitalize()
-	wardrobe_coins_label.text = "Coins: %d   ·   Win a best-of-3 match against %s to earn a coin" % [
-		coins, opponent_name]
-	for o in outfits.get(wardrobe_character, []):
-		var slot: Dictionary = wardrobe_slots[o.id]
-		var button: Button = slot.button
-		var owned := unlocked.has(o.id)
-		slot.image.modulate = Color.WHITE if owned else Color(0.15, 0.15, 0.15)
-		if o.id == selected_outfit_for(wardrobe_character):
-			button.text = "Selected"
-			button.disabled = true
-		elif owned:
-			button.text = "Select"
-			button.disabled = false
-		else:
-			button.text = "Unlock  (%d coin)" % UNLOCK_COST
-			button.disabled = coins < UNLOCK_COST
-
-
-func _on_outfit_pressed(id: String) -> void:
-	if _outfit(id).is_empty():
-		return
-	if not unlocked.has(id):
-		if coins < UNLOCK_COST:
-			return
-		coins -= UNLOCK_COST
-		unlocked.append(id)
-	for cid in outfits:
-		if outfits[cid].any(func(o): return o.id == id):
-			selected_outfits[cid] = id
-	_save_progress()
-	_refresh_wardrobe()
-
-
+## Card-game settings (the music volume). Outfits live in the Wardrobe (dating layer).
 func _load_progress() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(save_path) != OK:
 		return
-	coins = cfg.get_value("progress", "coins", 0)
 	music_volume = cfg.get_value("settings", "music_volume", music_volume)
-	unlocked = cfg.get_value("progress", "unlocked", [])
-	# Saves from before the character was named used "abg" ids.
-	unlocked = unlocked.map(func(id): return id.replace("abg", "jessica"))
-	var saved_selection: Dictionary = cfg.get_value("progress", "selected_outfits", {})
-	if cfg.has_section_key("progress", "selected_outfit"):  # older saves: Jessica only
-		saved_selection["jessica"] = str(cfg.get_value("progress", "selected_outfit")).replace("abg", "jessica")
-	# Outfits taken out of the lineup (e.g. Smile): refund their coins.
-	var known := _all_outfits().map(func(o): return o.id)
-	for id in unlocked.filter(func(id): return not known.has(id)):
-		unlocked.erase(id)
-		coins += UNLOCK_COST
-	for cid in outfits:
-		if not unlocked.has(outfits[cid][0].id):
-			unlocked.append(outfits[cid][0].id)
-		var pick: String = saved_selection.get(cid, "")
-		selected_outfits[cid] = pick if unlocked.has(pick) else outfits[cid][0].id
-	if cfg.get_value("progress", "coins_version", 1) < COINS_VERSION:
-		coins = 0  # one-time coin reset
-		_save_progress()
 
 
 func _save_progress() -> void:
 	var cfg := ConfigFile.new()
-	cfg.set_value("progress", "coins", coins)
-	cfg.set_value("progress", "unlocked", unlocked)
-	cfg.set_value("progress", "selected_outfits", selected_outfits)
-	cfg.set_value("progress", "coins_version", COINS_VERSION)
+	cfg.load(save_path)  # keep anything else in the file (e.g. old progress the Wardrobe imports)
 	cfg.set_value("settings", "music_volume", music_volume)
 	cfg.save(save_path)
 
@@ -1435,15 +1249,7 @@ func _set_opponent(info: Dictionary) -> void:
 func _on_date_requested(info: Dictionary) -> void:
 	_set_opponent(info.opponent)
 	in_date = true
-	date_outfit = random_unlocked_outfit()
 	_start_match()
-
-
-## She shows up to each date in a random outfit you've unlocked (kept for the whole match).
-## Opponents without wardrobe outfits return "" and use their profile portrait.
-func random_unlocked_outfit() -> String:
-	var owned: Array = outfits.get(opponent.get("id", ""), []).filter(func(o): return unlocked.has(o.id))
-	return owned.pick_random().id if not owned.is_empty() else ""
 
 
 ## Ends a date and hands control back to the dating layer.

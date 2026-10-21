@@ -8,7 +8,7 @@ A playable prototype of the Vietnamese card game **Tiến Lên** built with **Go
 
 ## Menus
 - **Story Mode:** the dating sim. Choose **New Story** or **Continue Story**.
-- **Quickplay:** straight into a card game, either 4 players against 3 CPUs, or 2 players against Jessica (best of 3, earns coins).
+- **Quickplay:** straight into a card game, either 4 players against 3 CPUs, or 2 players against Jessica (best of 3).
 - **Wardrobe**, the power-up toggles and a **music volume** slider are on the main page. The volume is saved; 0% pauses the song. Power-ups apply in both modes.
 
 ## Story Mode (dating layer)
@@ -18,7 +18,7 @@ The story lasts **3 days**, each with Morning, Afternoon, Evening and Night.
   - You earn it by talking (+$10), answering her quiz right (+$15) and going on dates (+$40 for a win, +$20 for a loss).
   - Spend it in the **Shop** (calendar). Each morning the shop stocks 6 random gifts, and shopping takes no time.
   - Prices are in `data/shop.json`; the earnings are under `economy` in `tuning.json`.
-  - Story money is separate from the Quickplay coins used in the Wardrobe.
+  - Money also buys outfits in the **Wardrobe** (see below).
 - **Journal** (calendar and conversations):
   - A page per girl with every fact you've learned about her, from talk, soft facts and right quiz answers (e.g. "Boba order: Taro with lychee jelly", 9 of 26).
   - It also lists which gifts she loved, liked or disliked.
@@ -40,8 +40,7 @@ There are two girls to pursue: **Jessica** and **Arisa**. In every part of the d
 **Saving:**
 - The day autosaves at the start of each new slot and when the day ends. The calendar also has a **Save game** button.
 - **Continue Story** loads the save. If you saved at the end of a day, it opens that day's summary.
-- The save is one slot in `user://dating_save.json`, holding the whole story. Coins and outfits are saved separately, in `user://save.cfg`.
-- Coins were reset to 0 once with this update; unlocked outfits were kept.
+- The save is one slot in `user://dating_save.json`, holding the whole story. Outfits you own are saved separately (`user://wardrobe.cfg`) and kept across stories. The music volume is in `user://save.cfg`.
 
 You have one day with four parts: Morning, Afternoon, Evening and Night. In each part, pick where to go.
 - **If Jessica is there,** you can:
@@ -113,15 +112,17 @@ Her profile is `data/characters/jessica.json`.
 - **Signature power-up:** Lead Steal, once per game, after losing a round she thought she'd win.
 - **Schedule:** see the table above.
 - **Wardrobe:** her outfits are Classic (free), Street, Pajamas, Maid and Lace.
-  - Coins come from 2-player matches on the main menu and are saved in `user://save.cfg`.
-  - **On a date** she shows up in a random outfit you've unlocked, kept for the whole match.
-  - **Quick 2-player matches** from the menu use the outfit selected in the Wardrobe.
-  - Smile was removed from the lineup. A save that had unlocked it gets its coin back.
 
 ### Wardrobe
-- All outfits are listed in `data/outfits.json`, one list per girl. Each girl's first outfit is free; the rest cost 1 coin.
-- The Wardrobe has a tab per girl, and each girl remembers her own selected outfit.
-- On a date, each girl wears a random outfit from the ones you've unlocked for her.
+- **Buying:** outfits cost Story Mode money: $150, $200, $300 and $400 per girl. Each girl's Classic is free.
+  - Buy them from the **Wardrobe** button on the story calendar.
+  - Outfits are **yours to keep**, even in a new story, so collecting them all takes several playthroughs.
+- **Wearing:**
+  - Pick **Wear** and she wears that outfit everywhere: conversations, dates and Quickplay.
+  - **Take off** returns to her choosing one of your outfits for each date. Conversations then show her Classic.
+- **From the main menu:** the Wardrobe lets you browse and change what she wears, but buying needs a story's money.
+- **Data:** outfits and prices are in `data/outfits.json`. Ownership and what's worn are in `user://wardrobe.cfg`.
+- **The old coin system is gone.** Outfits unlocked with coins carry over.
 
 ### Character art layout
 ```

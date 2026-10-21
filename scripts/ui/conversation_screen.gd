@@ -108,7 +108,8 @@ func open(id: String, location: String, location_name: String) -> void:
 	location_id = location
 	profile = Characters.profile(id)
 	title_label.text = "%s  ·  %s" % [profile.first_name(), location_name]
-	portrait.texture = load(profile.portrait()) if profile.portrait() != "" else null
+	var look: String = Wardrobe.look_path(id)
+	portrait.texture = load(look) if look != "" else null
 	subtitles_toggle.set_pressed_no_signal(GameState.settings.get("subtitles", true))
 	meter.set_character(id)
 	_clear_choices()
@@ -330,8 +331,10 @@ func give_gift(gift_id: String) -> void:
 func _on_date() -> void:
 	_say_event("on_date_ask", func():
 		visible = false
+		var opponent: Dictionary = profile.to_opponent()
+		opponent["portrait"] = Wardrobe.match_path(character_id)  # her outfit for this date
 		EventBus.fire("date_requested", {"character_id": character_id, "location": location_id,
-			"opponent": profile.to_opponent()}))
+			"opponent": opponent}))
 
 
 func _on_leave() -> void:

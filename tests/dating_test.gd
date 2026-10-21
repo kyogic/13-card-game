@@ -31,6 +31,11 @@ func _record(info: Dictionary, event: String) -> void:
 func _run() -> void:
 	bus = root.get_node("EventBus")
 	root.get_node("SaveGame").path = "user://test_dating_save.json"  # never touch the real save
+	var wardrobe: Node = root.get_node("Wardrobe")
+	wardrobe.path = "user://test_wardrobe.cfg"
+	wardrobe.legacy_path = "user://test_no_legacy.cfg"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(wardrobe.path))
+	wardrobe.load_collection()
 	state = root.get_node("GameState")
 	affection = root.get_node("Affection")
 	characters = root.get_node("Characters")
@@ -375,6 +380,89 @@ func _calendar_checks() -> void:
 	await _two_girls_checks()
 	await _save_load_checks()
 	await _economy_checks()
+	await _wardrobe_checks()
+
+
+## Outfits: bought with story money (kept forever), worn everywhere once picked.
+func _wardrobe_checks() -> void:
+	var w: Node = root.get_node("Wardrobe")
+	check(w.outfits.keys() == ["jessica", "arisa"] and w.outfits.jessica.size() == 5 and w.outfits.arisa.size() == 5,
+		"outfits from data/outfits.json")
+	for o in w.outfits.jessica + w.outfits.arisa:
+		check(load(o.path) is Texture2D, "outfit image loads: %s" % o.path)
+	check(w.is_owned("jessica") and w.is_owned("arisa") and not w.is_owned("jessica_maid"), "Classic is free")
+	check(w.price("jessica_street") >= 150 and w.price("jessica_lace") >= 400, "outfits are expensive")
+	bus.fire("new_story_requested")
+	await process_frame
+	layer.calendar.wardrobe_pressed.emit()
+	var screen = layer.wardrobe
+	check(screen.visible and screen.can_buy and screen.character_id == "jessica" and "$30" in screen.money_label.text,
+		"wardrobe opens from the calendar with your money")
+	check(screen.slots.jessica_street.button.disabled and screen.slots.jessica_street.button.text == "Buy  $150",
+		"can't afford an outfit at the start")
+	state.money = 500
+	screen.refresh()
+	screen.slots.jessica_maid.button.pressed.emit()
+	check(w.is_owned("jessica_maid") and state.money == 500 - w.price("jessica_maid")
+		and screen.slots.jessica_maid.button.text == "Wear", "buying an outfit costs story money")
+	# Wear it: she wears it everywhere until it's taken off.
+	screen.slots.jessica_maid.button.pressed.emit()
+	check(w.worn("jessica") == "jessica_maid" and screen.slots.jessica_maid.button.text.begins_with("Wearing"),
+		"wearing an outfit")
+	var maid_path: String = w.outfit("jessica_maid").path
+	check(w.look_path("jessica") == maid_path, "she wears it in conversations")
+	for i in 10:
+		check(w.match_path("jessica") == maid_path, "she wears it to every date")
+	main._set_opponent(characters.profile("jessica").to_opponent())
+	main.in_date = false
+	main._start_match()
+	check(main.portrait.texture.resource_path == maid_path, "and in Quickplay")
+	main._show_menu()
+	# Ownership and what she's wearing are kept forever (not part of the story save).
+	w.load_collection()
+	check(w.is_owned("jessica_maid") and w.worn("jessica") == "jessica_maid", "the wardrobe is saved")
+	bus.fire("new_story_requested")
+	await process_frame
+	check(w.is_owned("jessica_maid") and state.money == 30, "a new story keeps your outfits but not your money")
+	# Take it off: she goes back to picking one of your outfits for each date.
+	layer.calendar.wardrobe_pressed.emit()
+	screen.slots.jessica_maid.button.pressed.emit()
+	check(w.worn("jessica") == "", "taking it off")
+	var seen := {}
+	for i in 60:
+		seen[w.match_path("jessica")] = true
+	check(seen.keys().size() == 2 and seen.has(maid_path), "untouched: random among owned outfits")
+	check(w.look_path("jessica") == w.outfit("jessica").path, "conversations default to Classic")
+	screen.show_page("arisa")
+	check(screen.slots.size() == 5 and screen.slots.has("arisa_muay_thai"), "Arisa's tab")
+	screen.get_child(1).find_children("*", "Button", true, false).filter(
+		func(b): return b.text == "Close")[0].pressed.emit()
+	check(not screen.visible and layer.calendar.visible, "closing returns to the calendar")
+	# From the main menu: browse and wear, but no buying.
+	layer.hide_all()
+	bus.fire("wardrobe_requested")
+	check(screen.visible and not screen.can_buy and screen.slots.jessica_lace.button.disabled
+		and "Story Mode" in screen.slots.jessica_lace.button.text, "menu wardrobe can't buy")
+	screen.get_child(1).find_children("*", "Button", true, false).filter(
+		func(b): return b.text == "Close")[0].pressed.emit()
+	check(not layer.screens.visible, "closing the menu wardrobe returns to the menu")
+	# Coin-era saves: outfits unlocked with coins carry over (old "abg" ids too; removed ones drop).
+	var legacy := ConfigFile.new()
+	legacy.set_value("progress", "coins", 5)
+	legacy.set_value("progress", "unlocked", ["jessica", "abg_lace", "jessica_smile", "arisa_glam"])
+	legacy.save("user://test_legacy.cfg")
+	w.legacy_path = "user://test_legacy.cfg"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(w.path))
+	w.load_collection()
+	check(w.is_owned("jessica_lace") and w.is_owned("arisa_glam") and not w.is_owned("jessica_maid")
+		and not w.owned.has("jessica_smile") and w.is_owned("arisa"), "coin-era outfits carry over: %s" % [w.owned])
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_legacy.cfg"))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(w.path))
+	w.legacy_path = "user://test_no_legacy.cfg"
+	w.load_collection()
+	check(w.owned.size() == 2, "fresh wardrobe: just the free outfits")
+	root.get_node("SaveGame").delete_save()
+	layer.hide_all()
 
 
 ## Story money and the shop.
@@ -493,9 +581,9 @@ func _two_girls_checks() -> void:
 	convo.buttons.date.pressed.emit()
 	await _drain()
 	await process_frame
-	check(main.opponent.id == "arisa" and main.date_outfit.begins_with("arisa")
-		and main.portrait.texture.resource_path == main._outfit(main.date_outfit).path,
-		"Arisa wears one of her own unlocked outfits to the date")
+	var her_outfits: Array = root.get_node("Wardrobe").outfits_for("arisa").map(func(o): return o.path)
+	check(main.opponent.id == "arisa" and her_outfits.has(main.portrait.texture.resource_path),
+		"Arisa wears one of her own outfits to the date")
 	check(main.opponent.tuning.get("two_hold_tendency") == 0.9, "her defensive card AI")
 	var face_bottom: float = main.portrait.get_global_rect().position.y + main.portrait.get_global_rect().size.y * 0.4
 	check(layer.bubble.get_global_rect().position.y > face_bottom

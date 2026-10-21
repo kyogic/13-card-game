@@ -8,6 +8,7 @@ signal save_pressed
 signal menu_pressed
 signal journal_pressed
 signal shop_pressed
+signal wardrobe_pressed
 
 const AffectionMeter := preload("res://scripts/ui/affection_meter.gd")
 const Character := preload("res://scripts/character.gd")
@@ -60,7 +61,8 @@ func _init() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	var wait := Button.new()
-	wait.text = "Wait until the next part of the day"
+	wait.text = "Wait"
+	wait.tooltip_text = "Skip to the next part of the day"
 	wait.add_theme_font_size_override("font_size", 16)
 	wait.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	wait.pressed.connect(func(): wait_pressed.emit())
@@ -83,6 +85,12 @@ func _init() -> void:
 	shop.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	shop.pressed.connect(func(): shop_pressed.emit())
 	row.add_child(shop)
+	var wardrobe := Button.new()
+	wardrobe.text = "Wardrobe"
+	wardrobe.add_theme_font_size_override("font_size", 16)
+	wardrobe.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	wardrobe.pressed.connect(func(): wardrobe_pressed.emit())
+	row.add_child(wardrobe)
 	var menu := Button.new()
 	menu.text = "Main menu"
 	menu.tooltip_text = "Saves, then returns to the main menu"

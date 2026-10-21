@@ -26,6 +26,7 @@ Calendar="*res://scripts/dating/calendar.gd"
 SaveGame="*res://scripts/core/save_system.gd"
 Journal="*res://scripts/dating/journal.gd"
 Economy="*res://scripts/dating/economy.gd"
+Wardrobe="*res://scripts/dating/wardrobe.gd"
 
 [display]
 

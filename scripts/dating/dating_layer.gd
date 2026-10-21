@@ -9,6 +9,7 @@ const SummaryScreen := preload("res://scripts/ui/summary_screen.gd")
 const DebugPanel := preload("res://scripts/ui/debug_panel.gd")
 const JournalScreen := preload("res://scripts/ui/journal_screen.gd")
 const ShopScreen := preload("res://scripts/ui/shop_screen.gd")
+const WardrobeScreen := preload("res://scripts/ui/wardrobe_screen.gd")
 const ReactionBubble := preload("res://scripts/ui/reaction_bubble.gd")
 const AffectionMeter := preload("res://scripts/ui/affection_meter.gd")
 
@@ -18,6 +19,7 @@ var conversation
 var summary
 var journal
 var shop
+var wardrobe
 var debug_panel
 var bubble
 var date_meter
@@ -50,6 +52,10 @@ func _init() -> void:
 	shop.closed.connect(func(): calendar.refresh())
 	screens.add_child(shop)
 	calendar.shop_pressed.connect(func(): shop.open())
+	wardrobe = WardrobeScreen.new()
+	wardrobe.closed.connect(_on_wardrobe_closed)
+	screens.add_child(wardrobe)
+	calendar.wardrobe_pressed.connect(func(): wardrobe.open(true))
 	calendar.journal_pressed.connect(func(): journal.open())
 	conversation.journal_pressed.connect(func(): journal.open(conversation.character_id))
 
@@ -82,6 +88,7 @@ func _ready() -> void:
 	EventBus.time_advanced.connect(_on_time_advanced)
 	EventBus.day_ended.connect(_on_day_ended)
 	EventBus.continue_story_requested.connect(func(_info): continue_story())
+	EventBus.wardrobe_requested.connect(func(_info): _open_wardrobe_from_menu())
 	EventBus.money_changed.connect(func(_info):
 		if conversation.visible:
 			_refresh_status())
@@ -92,6 +99,7 @@ func hide_all() -> void:
 	screens.visible = false
 	journal.visible = false
 	shop.visible = false
+	wardrobe.visible = false
 	date_meter.visible = false
 	bubble.dismiss()
 
@@ -115,6 +123,22 @@ func continue_story() -> void:
 		return
 	calendar.show_message("Welcome back. It's %s." % Calendar.slot_name().to_lower())
 	_show_calendar()
+
+
+## From the main menu: browse and wear owned outfits (buying needs a story's money).
+func _open_wardrobe_from_menu() -> void:
+	screens.visible = true
+	calendar.visible = false
+	conversation.visible = false
+	summary.visible = false
+	wardrobe.open(false)
+
+
+func _on_wardrobe_closed() -> void:
+	if calendar.visible:
+		calendar.refresh()
+	else:
+		hide_all()  # opened from the main menu
 
 
 ## Saves and goes back to the main menu; Continue Story picks up right here.

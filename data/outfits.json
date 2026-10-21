@@ -1,57 +1,67 @@
 {
-  "_comment": "Wardrobe outfits per character. The first one is free; the rest cost coins. Ids must start with the character id.",
+  "_comment": "Wardrobe outfits per character, bought with Story Mode money ($) and kept forever. The first one (price 0) is free. Ids must start with the character id.",
   "jessica": [
     {
       "id": "jessica",
       "name": "Classic",
-      "path": "res://assets/characters/jessica/default.png"
+      "path": "res://assets/characters/jessica/default.png",
+      "price": 0
     },
     {
       "id": "jessica_street",
       "name": "Street",
-      "path": "res://assets/characters/jessica/street.png"
+      "path": "res://assets/characters/jessica/street.png",
+      "price": 150
     },
     {
       "id": "jessica_pajamas",
       "name": "Pajamas",
-      "path": "res://assets/characters/jessica/pajamas.png"
+      "path": "res://assets/characters/jessica/pajamas.png",
+      "price": 200
     },
     {
       "id": "jessica_maid",
       "name": "Maid",
-      "path": "res://assets/characters/jessica/maid.png"
+      "path": "res://assets/characters/jessica/maid.png",
+      "price": 300
     },
     {
       "id": "jessica_lace",
       "name": "Lace",
-      "path": "res://assets/characters/jessica/lace.png"
+      "path": "res://assets/characters/jessica/lace.png",
+      "price": 400
     }
   ],
   "arisa": [
     {
       "id": "arisa",
       "name": "Classic",
-      "path": "res://assets/characters/arisa/default.png"
-    },
-    {
-      "id": "arisa_glam",
-      "name": "Glam",
-      "path": "res://assets/characters/arisa/glam.png"
+      "path": "res://assets/characters/arisa/default.png",
+      "price": 0
     },
     {
       "id": "arisa_street",
       "name": "Street",
-      "path": "res://assets/characters/arisa/street.png"
+      "path": "res://assets/characters/arisa/street.png",
+      "price": 150
     },
     {
       "id": "arisa_muay_thai",
       "name": "Muay Thai",
-      "path": "res://assets/characters/arisa/muay_thai.png"
+      "path": "res://assets/characters/arisa/muay_thai.png",
+      "price": 200
+    },
+    {
+      "id": "arisa_glam",
+      "name": "Glam",
+      "path": "res://assets/characters/arisa/glam.png",
+      "price": 300
     },
     {
       "id": "arisa_school",
       "name": "School",
-      "path": "res://assets/characters/arisa/school.png"
+      "path": "res://assets/characters/arisa/school.png",
+      "price": 400
     }
   ]
 }
