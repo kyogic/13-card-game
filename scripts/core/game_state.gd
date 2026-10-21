@@ -46,14 +46,26 @@ func to_dict() -> Dictionary:
 		"settings": settings.duplicate()}
 
 
+## Restores from to_dict() output. JSON turns every number into a float, so whole
+## numbers are converted back to ints here.
 func from_dict(d: Dictionary) -> void:
-	day = d.get("day", 1)
-	slot_index = d.get("slot_index", 0)
-	time_left = d.get("time_left", 0)
+	day = int(d.get("day", 1))
+	slot_index = int(d.get("slot_index", 0))
+	time_left = int(d.get("time_left", 0))
 	location = d.get("location", "")
-	characters = d.get("characters", {}).duplicate(true)
-	inventory = d.get("inventory", {}).duplicate()
-	match_record = d.get("match_record", {"wins": 0, "losses": 0}).duplicate()
+	in_date = false
+	characters = {}
+	for id in d.get("characters", {}):
+		var st: Dictionary = char_state(id)  # defaults for keys older saves lack
+		for key in d.characters[id]:
+			st[key] = d.characters[id][key]
+		for key in ["affection", "start_affection"]:
+			st[key] = int(st[key])
+	inventory = {}
+	for g in d.get("inventory", {}):
+		inventory[g] = int(d.inventory[g])
+	var record: Dictionary = d.get("match_record", {})
+	match_record = {"wins": int(record.get("wins", 0)), "losses": int(record.get("losses", 0))}
 	day_log = d.get("day_log", []).duplicate(true)
 	settings = d.get("settings", settings).duplicate()
 

@@ -28,6 +28,7 @@ func _init() -> void:
 	calendar = CalendarScreen.new()
 	calendar.location_picked.connect(_on_location_picked)
 	calendar.wait_pressed.connect(_on_wait)
+	calendar.save_pressed.connect(_on_save)
 	screens.add_child(calendar)
 	conversation = ConversationScreen.new()
 	conversation.can_afford = func(kind): return Calendar.can_afford(kind)
@@ -62,6 +63,7 @@ func _ready() -> void:
 	EventBus.match_ended.connect(_on_match_ended)
 	EventBus.time_advanced.connect(_on_time_advanced)
 	EventBus.day_ended.connect(_on_day_ended)
+	EventBus.continue_day_requested.connect(func(_info): continue_day())
 	hide_all()
 
 
@@ -72,8 +74,28 @@ func hide_all() -> void:
 
 func start_day() -> void:
 	Calendar.start_day()
-	calendar.show_message("A free day. Where will you find Jessica?")
+	var names: Array = Characters.ids().map(func(id): return Characters.profile(id).first_name())
+	calendar.show_message("A free day. %s are out there somewhere, but you can only be in one place at a time."
+		% " and ".join(names))
+	SaveGame.save_game()
 	_show_calendar()
+
+
+## Loads the saved day (or starts a new one if there is none).
+func continue_day() -> void:
+	if not SaveGame.load_game():
+		start_day()
+		return
+	if Calendar.day_over:
+		_show_summary()
+		return
+	calendar.show_message("Welcome back. It's %s." % Calendar.slot_name().to_lower())
+	_show_calendar()
+
+
+func _on_save() -> void:
+	if SaveGame.save_game():
+		calendar.show_message("Game saved.")
 
 
 func _show_calendar() -> void:
@@ -89,7 +111,7 @@ func _on_location_picked(location: String) -> void:
 		return
 	var here: Array = Calendar.characters_at(location)
 	if here.is_empty():
-		calendar.show_message("You head to the %s... she's not here." % Calendar.location_name(location))
+		calendar.show_message("You head to the %s... nobody you know is here." % Calendar.location_name(location))
 		GameState.log_event("travel", "%s: nobody at the %s." % [Calendar.slot_name(), Calendar.location_name(location)])
 		Calendar.spend("travel_empty")
 		calendar.refresh()
@@ -119,7 +141,9 @@ func _on_time_advanced(info: Dictionary) -> void:
 	if info.slot_index == 0:
 		return
 	# Slot used up: whatever was happening, you're back to choosing where to go.
-	calendar.show_message("Time flies. It's %s now." % Calendar.slot_name().to_lower())
+	calendar.show_message("Time flies. It's %s now. (Autosaved.)" % Calendar.slot_name().to_lower())
+	if not GameState.in_date:
+		SaveGame.save_game()
 	if screens.visible and not GameState.in_date and not summary.visible:
 		_show_calendar()
 
@@ -154,6 +178,7 @@ func _on_date_closed(info: Dictionary) -> void:
 
 
 func _on_day_ended(_info: Dictionary) -> void:
+	SaveGame.save_game()
 	if not GameState.in_date:
 		_show_summary()  # during a date it shows once the date closes
 

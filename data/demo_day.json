@@ -1,15 +1,29 @@
 {
   "day": 1,
   "slots": [
-    {"id": "morning", "name": "Morning"},
-    {"id": "afternoon", "name": "Afternoon"},
-    {"id": "evening", "name": "Evening"},
-    {"id": "night", "name": "Night"}
+    {
+      "id": "morning",
+      "name": "Morning"
+    },
+    {
+      "id": "afternoon",
+      "name": "Afternoon"
+    },
+    {
+      "id": "evening",
+      "name": "Evening"
+    },
+    {
+      "id": "night",
+      "name": "Night"
+    }
   ],
   "starter_inventory": {
     "taro_boba": 1,
     "ca_phe_sua_da": 1,
-    "nail_set": 1,
-    "grocery_store_flowers": 1
+    "grocery_store_flowers": 1,
+    "mango_sticky_rice": 1,
+    "thai_milk_tea": 1,
+    "extra_spicy_som_tam": 1
   }
 }

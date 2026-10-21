@@ -23,6 +23,7 @@ Characters="*res://scripts/dating/character_db.gd"
 GameState="*res://scripts/core/game_state.gd"
 Affection="*res://scripts/dating/affection_system.gd"
 Calendar="*res://scripts/dating/calendar.gd"
+SaveGame="*res://scripts/core/save_system.gd"
 
 [display]
 

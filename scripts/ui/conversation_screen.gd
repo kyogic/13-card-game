@@ -125,7 +125,7 @@ func refresh() -> void:
 	_set_button("talk", "Talk", talk_left, "nothing new")
 	_set_button("quiz", "Quiz me", quiz_left, "no questions left")
 	_set_button("gift", "Give gift", gifts_left, "no gifts")
-	_set_button("date", "Ask on a date", can_date, "not here")
+	_set_button("date", "Ask on a date", can_date, "not a date spot")
 	buttons.leave.disabled = busy
 
 

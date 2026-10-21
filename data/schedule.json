@@ -1,16 +1,51 @@
 {
   "locations": {
-    "pho_spot": {"name": "Phở Spot", "requires": ""},
-    "boba_shop": {"name": "Boba Shop", "requires": "boba_date_location"},
-    "night_market": {"name": "Night Market", "requires": "night_market_date"},
-    "edm_festival": {"name": "EDM Festival", "requires": "festival_date"}
+    "pho_spot": {
+      "name": "Phở Spot",
+      "requires": ""
+    },
+    "muay_thai_gym": {
+      "name": "Muay Thai Gym",
+      "requires": ""
+    },
+    "seven_eleven": {
+      "name": "7-Eleven",
+      "requires": ""
+    },
+    "boba_shop": {
+      "name": "Boba Shop",
+      "requires": "boba_date_location"
+    },
+    "thai_tea_shop": {
+      "name": "Thai Tea Shop",
+      "requires": "thai_tea_date_location"
+    },
+    "night_market": {
+      "name": "Night Market",
+      "requires": "night_market_date"
+    },
+    "breakfast_cafe": {
+      "name": "Breakfast Café",
+      "requires": "breakfast_date"
+    },
+    "edm_festival": {
+      "name": "EDM Festival",
+      "requires": "festival_date"
+    }
   },
   "characters": {
     "jessica": {
       "morning": "pho_spot",
       "afternoon": "boba_shop",
       "evening": "night_market",
-      "night": null
+      "night": "pho_spot"
+    },
+    "arisa": {
+      "morning": "muay_thai_gym",
+      "afternoon": "thai_tea_shop",
+      "evening": "breakfast_cafe",
+      "night": "seven_eleven"
     }
-  }
+  },
+  "notes": "Each slot puts the girls in different places, so visiting one means missing the other. Arisa works nights: her 'breakfast' is in the evening before her shift, and she's at 7-Eleven on her 3am break."
 }

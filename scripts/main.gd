@@ -22,6 +22,8 @@ const OUTFITS := [
 	{"id": "jessica_lace", "name": "Lace", "path": "res://assets/characters/jessica/lace.png"},
 ]
 const UNLOCK_COST := 1
+## Bumping this resets everyone's coins once on their next launch (outfits are kept).
+const COINS_VERSION := 2
 const MATCH_WINS_NEEDED := 2   # 2-player games are best of 3
 ## Opponent for 2-player games started from the menu (dates pass their own).
 const DEFAULT_OPPONENT_PATH := "res://data/characters/jessica.json"
@@ -71,6 +73,7 @@ var coins := 0
 var unlocked: Array = ["jessica"]
 var selected_outfit := "jessica"
 var date_outfit := ""          # outfit she wore to the current date (random from unlocked)
+var pending_cpu_play: Array = []  # a CPU play decided ahead of its turn (her Second Wind)
 var match_wins := [0, 0]       # games won this match by [you, opponent]
 var match_game := 0            # which game of the match is being played
 var last_game_winner := -1     # leads the next game of the match
@@ -168,10 +171,14 @@ func _build_menu() -> void:
 	box.add_child(two)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
-	var day_button := _make_button("Demo Day", 20)
+	var day_button := _make_button("New Day", 20)
 	day_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	day_button.pressed.connect(func(): if bus: bus.fire("demo_day_requested"))
 	row.add_child(day_button)
+	var continue_button := _make_button("Continue Day", 20)
+	continue_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	continue_button.pressed.connect(func(): if bus: bus.fire("continue_day_requested"))
+	row.add_child(continue_button)
 	var wardrobe_button := _make_button("Wardrobe", 20)
 	wardrobe_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	wardrobe_button.pressed.connect(_show_wardrobe)
@@ -526,6 +533,7 @@ func _start_game(players: int) -> void:
 	lead_steal_armed = false
 	her_powerup_used = false
 	her_round_best = -1
+	pending_cpu_play = []
 	dealt_twos = hands[HUMAN].filter(func(c): return Rules.rank(c) == Rules.RANK_TWO)
 	two_saved_fired = false
 	wild_card = -1
@@ -574,8 +582,11 @@ func _start_turn() -> void:
 	await get_tree().create_timer(CPU_DELAY).timeout
 	if my_game != game_id:
 		return  # game was restarted or abandoned while waiting
-	var cards := AI.choose_play(hands[current], last_combo, required_card, _danger_for(current),
-		opponent.get("tuning", {}) if num_players == 2 else {})
+	var cards := pending_cpu_play
+	pending_cpu_play = []
+	if cards.is_empty():
+		cards = AI.choose_play(hands[current], last_combo, required_card, _danger_for(current),
+			opponent.get("tuning", {}) if num_players == 2 else {})
 	if cards.is_empty():
 		_do_pass(current)
 	else:
@@ -626,6 +637,8 @@ func _advance_turn() -> void:
 	for _step in num_players:
 		i = (i + 1) % num_players
 		if i == last_player:
+			if _opponent_second_wind():
+				return
 			# A Hand-Locked round winner doesn't get the lead; it passes on.
 			_new_round(i if hands[i].size() > 0 and not locked[i] else _next_active(i))
 			return
@@ -1157,7 +1170,7 @@ func _update_portrait() -> void:
 	if portrait.visible:
 		# Wardrobe outfits (if this opponent has any) replace the profile portrait.
 		var path: String = opponent.get("portrait", "")
-		if OUTFITS.any(func(o): return o.id.begins_with(opponent.get("id", "?"))):
+		if OUTFITS.any(func(o): return _is_opponent_outfit(o.id)):
 			path = _outfit(date_outfit if in_date and date_outfit != "" else selected_outfit).path
 		portrait.texture = load(path)
 
@@ -1272,6 +1285,9 @@ func _load_progress() -> void:
 		coins += UNLOCK_COST
 	if not unlocked.has(selected_outfit):
 		selected_outfit = "jessica"
+	if cfg.get_value("progress", "coins_version", 1) < COINS_VERSION:
+		coins = 0  # one-time coin reset
+		_save_progress()
 
 
 func _save_progress() -> void:
@@ -1279,6 +1295,7 @@ func _save_progress() -> void:
 	cfg.set_value("progress", "coins", coins)
 	cfg.set_value("progress", "unlocked", unlocked)
 	cfg.set_value("progress", "selected_outfit", selected_outfit)
+	cfg.set_value("progress", "coins_version", COINS_VERSION)
 	cfg.save(save_path)
 
 
@@ -1300,9 +1317,14 @@ func _on_date_requested(info: Dictionary) -> void:
 
 
 ## She shows up to each date in a random outfit you've unlocked (kept for the whole match).
+## Opponents without wardrobe outfits return "" and use their profile portrait.
 func random_unlocked_outfit() -> String:
-	var owned := OUTFITS.filter(func(o): return unlocked.has(o.id))
-	return owned.pick_random().id if not owned.is_empty() else OUTFITS[0].id
+	var owned := OUTFITS.filter(func(o): return unlocked.has(o.id) and _is_opponent_outfit(o.id))
+	return owned.pick_random().id if not owned.is_empty() else ""
+
+
+func _is_opponent_outfit(id: String) -> bool:
+	return id.begins_with(opponent.get("id", "?"))
 
 
 ## Ends a date and hands control back to the dating layer.
@@ -1367,3 +1389,24 @@ func _opponent_round_end(round_winner: int, leader: int) -> int:
 		_emit("powerup_used", {"by": "opponent", "id": "lead_steal", "first": true})
 		return her
 	return leader
+
+
+## Her signature Second Wind (from the opponent's card_ai), once per game: she has passed,
+## the round is about to go to you, and she jumps back in with a play that beats yours.
+## Returns true if she used it (her play is queued for her turn).
+func _opponent_second_wind() -> bool:
+	var her := 1
+	if num_players != 2 or last_player != HUMAN or opponent.get("signature_powerup", "") != "second_wind":
+		return false
+	if her_powerup_used or not passed[her] or locked[her] or hands[her].is_empty():
+		return false
+	var cards := AI.choose_play(hands[her], last_combo, -1, 0, opponent.get("tuning", {}))
+	if cards.is_empty():
+		return false
+	her_powerup_used = true
+	passed[her] = false
+	current = her
+	pending_cpu_play = cards
+	_log("%s used Second Wind!" % opponent_name)
+	_emit("powerup_used", {"by": "opponent", "id": "second_wind", "first": true})
+	return true

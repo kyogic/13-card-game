@@ -3,6 +3,7 @@ extends VBoxContainer
 ## and a floating +7 / -5 pop-up whenever the value changes.
 
 var character_id := ""
+var show_name := false         # prefix the label with her name (when several meters are shown)
 var label: Label
 var bar: ProgressBar
 
@@ -40,7 +41,8 @@ func refresh() -> void:
 	var v: int = Affection.value(character_id)
 	bar.max_value = profile.affection_max()
 	bar.value = v
-	label.text = "Affection %d/%d  ·  %s" % [v, profile.affection_max(), profile.stage(v).get("label", "")]
+	label.text = "%sAffection %d/%d  ·  %s" % [profile.first_name() + "  ·  " if show_name else "", v,
+		profile.affection_max(), profile.stage(v).get("label", "")]
 
 
 func _on_changed(info: Dictionary) -> void:

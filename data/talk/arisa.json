@@ -1,0 +1,377 @@
+{
+  "character": "arisa",
+  "exchanges": [
+    {
+      "id": "night_shift",
+      "teaches": [
+        "job"
+      ],
+      "lines": [
+        {
+          "speaker": "arisa",
+          "text": "Sorry, I'm yawning. I just finished a twelve-hour shift, ka."
+        },
+        {
+          "speaker": "arisa",
+          "text": "I'm a night-shift ER nurse. Somebody has to be awake at 3am, na?"
+        }
+      ],
+      "choices": [
+        {
+          "text": "That's amazing. You save lives every night.",
+          "quality": "good",
+          "reply": [
+            {
+              "speaker": "arisa",
+              "text": "Hehe, mostly I clean up and hold hands. But thank you, ka."
+            }
+          ]
+        },
+        {
+          "text": "Doesn't that mess up your sleep?",
+          "quality": "neutral",
+          "reply": [
+            {
+              "speaker": "arisa",
+              "text": "Jing jing. I sleep like a vampire now.",
+              "translation": "Seriously. I sleep like a vampire now."
+            }
+          ]
+        },
+        {
+          "text": "So you just give people shots?",
+          "quality": "bad",
+          "reply": [
+            {
+              "speaker": "arisa",
+              "text": "...Mai pen rai. Sure. Shots.",
+              "translation": "...Never mind. Sure. Shots."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cats",
+      "teaches": [
+        "late_night_snack",
+        "stray_cats"
+      ],
+      "lines": [
+        {
+          "speaker": "arisa",
+          "text": "After my shift I always stop at 7-Eleven. Ham and cheese toastie. Best 3am food, ka."
+        },
+        {
+          "speaker": "arisa",
+          "text": "Then I feed the stray cats by my apartment. Every night. They wait for me now."
+        }
+      ],
+      "choices": [
+        {
+          "text": "They're lucky to have you.",
+          "quality": "good",
+          "reply": [
+            {
+              "speaker": "arisa",
+              "text": "I think I'm the lucky one, na."
+            }
+          ]
+        },
+        {
+          "text": "How many cats are we talking?",
+          "quality": "neutral",
+          "reply": [
+            {
+              "speaker": "arisa",
+              "text": "Seven. Maybe eight. They don't tell me their names."
+            }
+          ]
+        },
+        {
+          "text": "Isn't feeding strays a bad idea?",
+          "quality": "bad",
+          "reply": [
+            {
+              "speaker": "arisa",
+              "text": "Hmm. Okay, ka. I'll still feed them."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lakorn",
+      "teaches": [
+        "favorite_show"
+      ],
+      "lines": [
+        {
+          "speaker": "arisa",
+          "text": "Can I tell you something embarrassing? I watch old lakorn dramas to relax.",
+          "translation": "Can I tell you something embarrassing? I watch old Thai soap operas (lakorn) to relax."
+        },
+        {
+          "speaker": "arisa",
+          "text": "Slaps, amnesia, evil twins. I love all of it, ka."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Evil twins? I'm in. Show me one.",
+          "quality": "good",
+          "reply": [
+            {
+              "speaker": "arisa",
+              "text": "Really? Okay! You have to promise to finish it, na."
+            }
+          ]
+        },
+        {
+          "text": "Like soap operas?",
+          "quality": "neutral",
+          "reply": [
+            {
+              "speaker": "arisa",
+              "text": "Like soap operas, but more slapping."
+            }
+          ]
+        },
+        {
+          "text": "That sounds kind of dumb.",
+          "quality": "bad",
+          "reply": [
+            {
+              "speaker": "arisa",
+              "text": "...Okay, ka. Hehe."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "milk_tea",
+      "teaches": [
+        "morning_drink"
+      ],
+      "lines": [
+        {
+          "speaker": "arisa",
+          "text": "Every morning — well, my morning — I need Thai milk tea. Extra sweet, ka."
+        },
+        {
+          "speaker": "arisa",
+          "text": "Extra extra sweet. Don't judge me, na."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Extra sweet is the only correct way.",
+          "quality": "good",
+          "reply": [
+            {
+              "speaker": "arisa",
+              "text": "See? You understand me."
+            }
+          ]
+        },
+        {
+          "text": "I'm more of a coffee person.",
+          "quality": "neutral",
+          "reply": [
+            {
+              "speaker": "arisa",
+              "text": "Mai pen rai. Nobody's perfect.",
+              "translation": "No worries. Nobody's perfect."
+            }
+          ]
+        },
+        {
+          "text": "That's basically dessert.",
+          "quality": "bad",
+          "reply": [
+            {
+              "speaker": "arisa",
+              "text": "Yes. And?"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "patience",
+      "teaches": [
+        "pet_peeve"
+      ],
+      "lines": [
+        {
+          "speaker": "arisa",
+          "text": "You know what I really can't stand? People who rush."
+        },
+        {
+          "speaker": "arisa",
+          "text": "At work, everybody rushes. Outside work, I want slow. Slow is good, na."
+        }
+      ],
+      "choices": [
+        {
+          "text": "Then let's take our time.",
+          "quality": "good",
+          "reply": [
+            {
+              "speaker": "arisa",
+              "text": "...Okay. I like that answer, ka."
+            }
+          ]
+        },
+        {
+          "text": "Hard to avoid in an ER, I bet.",
+          "quality": "neutral",
+          "reply": [
+            {
+              "speaker": "arisa",
+              "text": "Very hard. That's why I rush there and nowhere else."
+            }
+          ]
+        },
+        {
+          "text": "Hurry up and finish the story then.",
+          "quality": "bad",
+          "reply": [
+            {
+              "speaker": "arisa",
+              "text": "Hehe. No."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "facts": [
+    {
+      "id": "age",
+      "teaches": [
+        "age"
+      ],
+      "lines": [
+        {
+          "speaker": "arisa",
+          "text": "I'm 25, ka. Old enough to be tired all the time."
+        }
+      ]
+    },
+    {
+      "id": "birthday",
+      "teaches": [
+        "birthday",
+        "zodiac"
+      ],
+      "lines": [
+        {
+          "speaker": "arisa",
+          "text": "My birthday is August 12. I'm a Leo, na. Quiet Leo."
+        }
+      ]
+    },
+    {
+      "id": "height",
+      "teaches": [
+        "height"
+      ],
+      "lines": [
+        {
+          "speaker": "arisa",
+          "text": "I'm 5'4\". Everyone thinks I'm shorter. I don't know why."
+        }
+      ]
+    },
+    {
+      "id": "favorite_food",
+      "teaches": [
+        "favorite_food"
+      ],
+      "lines": [
+        {
+          "speaker": "arisa",
+          "text": "Mango sticky rice is my favorite food. Forever. I'd eat it every day if I could."
+        }
+      ]
+    },
+    {
+      "id": "favorite_color",
+      "teaches": [
+        "favorite_color"
+      ],
+      "lines": [
+        {
+          "speaker": "arisa",
+          "text": "Soft pink. My scrubs are blue, so everything else I own is pink, ka."
+        }
+      ]
+    },
+    {
+      "id": "favorite_holiday",
+      "teaches": [
+        "favorite_holiday"
+      ],
+      "lines": [
+        {
+          "speaker": "arisa",
+          "text": "Songkran is the best holiday. The whole country has a water fight for three days, na.",
+          "translation": "Songkran (Thai New Year) is the best holiday. The whole country has a water fight for three days."
+        }
+      ]
+    },
+    {
+      "id": "music",
+      "teaches": [
+        "music"
+      ],
+      "lines": [
+        {
+          "speaker": "arisa",
+          "text": "I listen to Thai pop. And old luk thung my mom used to play. It makes me homesick in a good way.",
+          "translation": "I listen to Thai pop. And old luk thung (Thai country music) my mom used to play. It makes me homesick in a good way."
+        }
+      ]
+    },
+    {
+      "id": "lucky_number",
+      "teaches": [
+        "lucky_number"
+      ],
+      "lines": [
+        {
+          "speaker": "arisa",
+          "text": "Nine is my lucky number. In Thai it sounds like 'moving forward', ka."
+        }
+      ]
+    },
+    {
+      "id": "ideal_date",
+      "teaches": [
+        "ideal_date"
+      ],
+      "lines": [
+        {
+          "speaker": "arisa",
+          "text": "My ideal date? Quiet breakfast after my night shift. Then a nap. Together. Hehe."
+        }
+      ]
+    },
+    {
+      "id": "nickname",
+      "teaches": [
+        "nickname"
+      ],
+      "lines": [
+        {
+          "speaker": "arisa",
+          "text": "When I'm close to someone older, I call them phi. Maybe I'll call you that one day, na.",
+          "translation": "When I'm close to someone older, I call them phi (big brother/sister). Maybe I'll call you that one day.",
+          "keep_nickname": true
+        }
+      ]
+    }
+  ]
+}

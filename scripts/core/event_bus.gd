@@ -13,6 +13,7 @@ signal powerup_used(info: Dictionary)    # {by: "player"|"opponent", id, first: 
 
 # --- Navigation between the layers --------------------------------------------
 signal demo_day_requested(info: Dictionary)
+signal continue_day_requested(info: Dictionary)  # load the saved day
 signal date_requested(info: Dictionary)  # {character_id, location, opponent: {...}}
 signal date_closed(info: Dictionary)     # {completed: bool}
 
@@ -24,6 +25,8 @@ signal affection_changed(info: Dictionary)  # {character_id, delta, value, reaso
 signal affection_stage_reached(info: Dictionary)  # {character_id, stage, unlocks}
 signal time_advanced(info: Dictionary)      # {slot_index, time_left}
 signal day_ended(info: Dictionary)
+signal game_saved(info: Dictionary)         # {path}
+signal game_loaded(info: Dictionary)        # {path}
 
 ## Card events the debug panel can fire by hand.
 const CARD_EVENTS := ["match_started", "match_ended", "hand_won", "hand_lost", "bomb_played",

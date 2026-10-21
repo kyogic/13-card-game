@@ -7,7 +7,22 @@ A playable prototype of the Vietnamese card game **Tiến Lên** built with **Go
 - **2 Players:** you against 1 CPU, half the deck. 26 cards are dealt (13 each) and the rest stay out of play.
 
 ## Demo Day (dating layer)
-Press **Demo Day** on the main menu.
+Press **New Day** on the main menu, or **Continue Day** to resume your saved day.
+
+There are two girls to pursue: **Jessica** and **Arisa**. In every part of the day they're in different places, so going to see one means missing the other:
+
+| Slot | Jessica | Arisa |
+|---|---|---|
+| Morning | Phở Spot | Muay Thai Gym |
+| Afternoon | Boba Shop (Jessica: Curious, 20) | Thai Tea Shop (Arisa: Friendly, 20) |
+| Evening | Night Market (Jessica: Catching feelings, 70) | Breakfast Café (Arisa: Trusting, 70), her "breakfast" before a night shift |
+| Night | Phở Spot (late-night run) | 7-Eleven (her 3am break; not a date spot) |
+
+**Saving:**
+- The day autosaves at the start of each new slot and when the day ends. The calendar also has a **Save game** button.
+- **Continue Day** loads the save. A finished day opens its summary.
+- The save is one slot in `user://dating_save.json`. Coins and outfits are saved separately, in `user://save.cfg`.
+- Coins were reset to 0 once with this update; unlocked outfits were kept.
 
 You have one day with four parts: Morning, Afternoon, Evening and Night. In each part, pick where to go.
 - **If Jessica is there,** you can:
@@ -64,15 +79,20 @@ No code changes are needed; the tests load an extra character from data to check
 
 Dialogue lines can be a plain string or `{"text": ..., "translation": ...}`. The translation is shown as an English subtitle when the conversation screen's subtitles toggle is on.
 
+### Arisa
+Her profile is `data/characters/arisa.json`, and her small talk is in `data/talk/arisa.json`.
+- **Who she is:** Arisa Wongsakul ("Ari"), a night-shift ER nurse.
+- **Card AI:** defensive. She hoards 2s and bombs and passes a lot.
+- **Signature power-up:** **Second Wind**, once per game. After she's passed and you think you've won the round, she jumps back in with a play that beats yours.
+- **Nickname:** she calls you "phi" once that's unlocked at Trusting (70).
+- **Subtitles:** her Thai phrases (mai pen rai, jing jing, chai yo, ...) have English subtitles.
+- **Art:** `assets/characters/arisa/default.png`, cut out from the original in `source/`. She has no wardrobe outfits yet, so dates use her portrait.
+
 ### Jessica
 Her profile is `data/characters/jessica.json`.
 - **Card AI:** comes from `card_ai.tuning`: aggressive, spends her 2s early, loves straights.
 - **Signature power-up:** Lead Steal, once per game, after losing a round she thought she'd win.
-- **Schedule:**
-  - Morning: phở spot
-  - Afternoon: boba shop (needs Curious, 20)
-  - Evening: night market (needs Catching feelings, 70)
-  - Night: nowhere
+- **Schedule:** see the table above.
 - **Wardrobe:** 2-player matches from the main menu still earn coins for unlocking her outfits: Street, Pajamas, Maid and Lace (Classic is free). Those are saved separately in `user://save.cfg`.
   - **On a date** she shows up in a random outfit you've unlocked, kept for the whole match.
   - **Quick 2-player matches** from the menu use the outfit selected in the Wardrobe.
@@ -132,6 +152,7 @@ Suit Up, Lucky Draw and Wild Card can't be used on the card you're required to o
 | `scripts/main.gd` | Card game: menu, table UI, turn flow, matches, power-ups; emits card events |
 | `scripts/character.gd` | Reads a character profile JSON (dialogue, stages, gifts, trivia, AI tuning) |
 | `scripts/core/`, `scripts/dating/`, `scripts/ui/` | Dating layer (see Demo Day above) |
+| `scripts/core/save_system.gd` | Save/load of the day (`SaveGame` autoload) |
 | `tests/dating_test.gd` | Dating layer: affection, dialogue, calendar, summary, debug panel, a second character, and a real date |
 | `tests/sim_test.gd` | Headless rule tests plus 300 CPU-only games |
 | `tests/ui_test.gd` | Plays full games through the real scene, driving the human seat with Hint |

@@ -248,9 +248,20 @@ func _match_and_wardrobe_checks() -> void:
 	var refunded = load("res://scenes/main.tscn").instantiate()
 	refunded.save_path = "user://test_smile_save.cfg"
 	root.add_child(refunded)
-	check(refunded.unlocked == ["jessica", "jessica_maid"] and refunded.coins == 1
-		and refunded.selected_outfit == "jessica", "removed Smile outfit is refunded")
+	check(refunded.unlocked == ["jessica", "jessica_maid"] and refunded.coins == 0
+		and refunded.selected_outfit == "jessica", "old save: Smile dropped, coins reset to 0, outfits kept")
 	refunded.queue_free()
+	# The reset happens once: a save already on the new coin version keeps its coins.
+	var v2 := ConfigFile.new()
+	v2.set_value("progress", "coins", 3)
+	v2.set_value("progress", "unlocked", ["jessica"])
+	v2.set_value("progress", "coins_version", main.COINS_VERSION)
+	v2.save("user://test_smile_save.cfg")
+	var kept = load("res://scenes/main.tscn").instantiate()
+	kept.save_path = "user://test_smile_save.cfg"
+	root.add_child(kept)
+	check(kept.coins == 3, "coins are only reset once")
+	kept.queue_free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_smile_save.cfg"))
 
 	# Dates: she shows up in a random unlocked outfit (never a locked one).

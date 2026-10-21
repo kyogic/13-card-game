@@ -1,0 +1,590 @@
+{
+  "id": "arisa",
+  "name": "Arisa Wongsakul",
+  "nickname": "Ari",
+  "age": 25,
+  "archetype": "Sweet Thai girl next door (with a hidden edge)",
+  "occupation": "Night-shift ER nurse",
+  "heritage": "Thai, moved to the US for nursing school",
+  "appearance": {
+    "hair": "Long, wavy chestnut brown, worn down and a little messy",
+    "eyes": "Warm brown, soft winged liner",
+    "signature_items": [
+      "Glossy pink lips",
+      "Hands always in her pockets",
+      "No jewelry (she takes it off for work and forgets to put it back on)"
+    ],
+    "tattoos": [],
+    "default_outfit": "White ribbed crop tank, light-wash wide-leg jeans"
+  },
+  "personality": {
+    "summary": "Polite, gentle, always smiling. Says 'mai pen rai' to everything. Underneath: calm under pressure, fiercely disciplined, and a ruthless competitor who never shows it on her face.",
+    "traits": [
+      "sweet",
+      "polite",
+      "easygoing",
+      "patient",
+      "secretly ruthless",
+      "disciplined"
+    ],
+    "hidden_side": "She trains Muay Thai at 6am after night shifts and has a real fight record. The sweet smile is genuine, but it's also her best weapon. Nobody ever sees her coming.",
+    "speech_style": "Soft and polite. Ends sentences with 'ka' and 'na'. Laughs things off with 'mai pen rai'. Gets very quiet, not loud, when she's winning. Calls the player 'phi' once affection is high enough."
+  },
+  "likes": [
+    "mango sticky rice",
+    "Thai milk tea",
+    "lakorn dramas",
+    "7-Eleven toasties at 3am",
+    "Muay Thai",
+    "quiet mornings",
+    "people who are patient"
+  ],
+  "dislikes": [
+    "very spicy food (her big secret)",
+    "people who rush",
+    "being called fragile",
+    "loud show-offs"
+  ],
+  "gifts": {
+    "loved": [
+      "mango_sticky_rice",
+      "muay_thai_hand_wraps",
+      "jasmine_garland",
+      "poetry_notebook"
+    ],
+    "liked": [
+      "thai_milk_tea",
+      "lakorn_box_set",
+      "compression_socks",
+      "7_eleven_toastie"
+    ],
+    "disliked": [
+      "extra_spicy_som_tam",
+      "cheap_perfume"
+    ],
+    "affection_values": {
+      "loved": 15,
+      "liked": 7,
+      "neutral": 2,
+      "disliked": -5
+    }
+  },
+  "glossary": {
+    "ka": "Polite sentence ending used by women",
+    "na": "Softening ending, like 'okay?' or 'please'",
+    "mai pen rai": "Never mind / no worries",
+    "sanuk": "Fun",
+    "aroi": "Delicious",
+    "jing jing": "Really, seriously",
+    "phi": "Older sibling; affectionate way to address someone older",
+    "chai yo": "Let's go! / You can do it!"
+  },
+  "profile": {
+    "age": 25,
+    "birthday": "August 12",
+    "zodiac": "Leo",
+    "height": "5'4\"",
+    "hobby": "Muay Thai",
+    "music": "Thai pop and old luk thung her mom played",
+    "favorite_food": "Mango sticky rice",
+    "spice_tolerance": "Almost none (secret)",
+    "morning_drink": "Thai milk tea, extra sweet",
+    "favorite_color": "Soft pink",
+    "pet": "None, but she feeds every stray cat near her apartment",
+    "favorite_holiday": "Songkran",
+    "favorite_show": "Old lakorn dramas",
+    "late_night_snack": "7-Eleven ham and cheese toastie",
+    "lucky_number": 9,
+    "biggest_fear": "Hospitals when she's the patient",
+    "hidden_talent": "Muay Thai, with a real amateur fight record",
+    "secret_hobby": "Writes poetry in Thai in a notebook nobody's allowed to read",
+    "terrible_at": "Singing. Truly terrible. She knows.",
+    "why_nurse": "Her yai was cared for by a nurse who held her hand at the end",
+    "sends_money_home": "Pays for her little brother's university",
+    "pet_peeve": "People who rush",
+    "ideal_date": "Quiet breakfast after her night shift, then a nap together"
+  },
+  "trivia": [
+    {
+      "id": "age",
+      "question": "How old am I, ka?",
+      "answer": "25",
+      "wrong": [
+        "22",
+        "23",
+        "28"
+      ]
+    },
+    {
+      "id": "birthday",
+      "question": "When's my birthday?",
+      "answer": "August 12",
+      "wrong": [
+        "April 13",
+        "December 5",
+        "January 1"
+      ]
+    },
+    {
+      "id": "zodiac",
+      "question": "What's my sign?",
+      "answer": "Leo",
+      "wrong": [
+        "Virgo",
+        "Cancer",
+        "Libra"
+      ]
+    },
+    {
+      "id": "height",
+      "question": "How tall am I?",
+      "answer": "5'4\"",
+      "wrong": [
+        "5'0\"",
+        "5'6\"",
+        "5'8\""
+      ]
+    },
+    {
+      "id": "job",
+      "question": "What do I do for work?",
+      "answer": "Night-shift ER nurse",
+      "wrong": [
+        "Massage therapist",
+        "Flight attendant",
+        "Restaurant owner"
+      ]
+    },
+    {
+      "id": "favorite_food",
+      "question": "What's my favorite food?",
+      "answer": "Mango sticky rice",
+      "wrong": [
+        "Pad thai",
+        "Green curry",
+        "Som tam"
+      ]
+    },
+    {
+      "id": "morning_drink",
+      "question": "What do I drink every morning?",
+      "answer": "Thai milk tea, extra sweet",
+      "wrong": [
+        "Black coffee",
+        "Green tea",
+        "Coconut water"
+      ]
+    },
+    {
+      "id": "favorite_color",
+      "question": "What's my favorite color?",
+      "answer": "Soft pink",
+      "wrong": [
+        "Gold",
+        "White",
+        "Purple"
+      ]
+    },
+    {
+      "id": "favorite_holiday",
+      "question": "What's my favorite holiday?",
+      "answer": "Songkran",
+      "wrong": [
+        "Loy Krathong",
+        "Christmas",
+        "New Year's Eve"
+      ]
+    },
+    {
+      "id": "favorite_show",
+      "question": "What do I watch to relax?",
+      "answer": "Old lakorn dramas",
+      "wrong": [
+        "True crime",
+        "Anime",
+        "Cooking shows"
+      ]
+    },
+    {
+      "id": "late_night_snack",
+      "question": "What's my 3am snack after a shift?",
+      "answer": "A 7-Eleven toastie",
+      "wrong": [
+        "Instant noodles",
+        "Mango sticky rice",
+        "Nothing, I'm on a diet"
+      ]
+    },
+    {
+      "id": "music",
+      "question": "What music do I like?",
+      "answer": "Thai pop and old luk thung",
+      "wrong": [
+        "EDM",
+        "Heavy metal",
+        "Jazz"
+      ]
+    },
+    {
+      "id": "stray_cats",
+      "question": "What do I do every night when I get home?",
+      "answer": "Feed the stray cats",
+      "wrong": [
+        "Call my mom",
+        "Do skincare",
+        "Play video games"
+      ]
+    },
+    {
+      "id": "lucky_number",
+      "question": "What's my lucky number?",
+      "answer": "9",
+      "wrong": [
+        "3",
+        "7",
+        "8"
+      ]
+    },
+    {
+      "id": "pet_peeve",
+      "question": "What's my biggest pet peeve?",
+      "answer": "People who rush",
+      "wrong": [
+        "People who are late",
+        "Loud chewing",
+        "Bad drivers"
+      ]
+    },
+    {
+      "id": "ideal_date",
+      "question": "What's my ideal date?",
+      "answer": "Breakfast after my night shift, then a nap",
+      "wrong": [
+        "Fancy dinner",
+        "Clubbing",
+        "Beach day"
+      ]
+    },
+    {
+      "id": "nickname",
+      "question": "What do I call you once we're close?",
+      "answer": "Phi",
+      "wrong": [
+        "Baby",
+        "Honey",
+        "Your full name"
+      ]
+    },
+    {
+      "id": "spice_tolerance",
+      "question": "How spicy do I like my food?",
+      "answer": "Barely spicy at all",
+      "wrong": [
+        "Thai spicy",
+        "Extra extra spicy",
+        "Medium"
+      ],
+      "min_affection": 20
+    },
+    {
+      "id": "hidden_talent",
+      "question": "What's my hidden talent?",
+      "answer": "Muay Thai",
+      "wrong": [
+        "Thai dance",
+        "Cooking",
+        "Singing"
+      ],
+      "min_affection": 45
+    },
+    {
+      "id": "terrible_at",
+      "question": "What am I terrible at?",
+      "answer": "Singing",
+      "wrong": [
+        "Cooking",
+        "Driving",
+        "Card games"
+      ],
+      "min_affection": 45
+    },
+    {
+      "id": "biggest_fear",
+      "question": "What am I secretly scared of?",
+      "answer": "Being the patient in a hospital",
+      "wrong": [
+        "Ghosts",
+        "Snakes",
+        "The ocean"
+      ],
+      "min_affection": 45
+    },
+    {
+      "id": "secret_hobby",
+      "question": "What do I do that nobody's allowed to see?",
+      "answer": "Write poetry in Thai",
+      "wrong": [
+        "Draw comics",
+        "Make TikToks",
+        "Knit"
+      ],
+      "min_affection": 45
+    },
+    {
+      "id": "fight_record",
+      "question": "Have I ever fought for real?",
+      "answer": "Yes, I have an amateur fight record",
+      "wrong": [
+        "No, it's just for fitness",
+        "Only once, and I lost",
+        "I'm only a coach"
+      ],
+      "min_affection": 70
+    },
+    {
+      "id": "why_nurse",
+      "question": "Why did I become a nurse?",
+      "answer": "A nurse held my yai's hand at the end",
+      "wrong": [
+        "My parents made me",
+        "For the money",
+        "It was easy to get into"
+      ],
+      "min_affection": 70
+    },
+    {
+      "id": "sends_money_home",
+      "question": "Who am I paying for back home?",
+      "answer": "My little brother's university",
+      "wrong": [
+        "My parents' house",
+        "My cousin's wedding",
+        "Nobody"
+      ],
+      "min_affection": 70
+    },
+    {
+      "id": "smile",
+      "question": "What's my smile really for?",
+      "answer": "So nobody sees me coming",
+      "wrong": [
+        "I'm just happy",
+        "My mom told me to",
+        "To get free stuff"
+      ],
+      "min_affection": 90
+    }
+  ],
+  "soft_facts": [
+    {
+      "id": "spice_tolerance",
+      "min_affection": 20,
+      "reveal": "Okay, promise not to laugh, na? I can't eat spicy food. Everyone hands me the chili and I just... smile and suffer. Mai pen rai. It's my secret.",
+      "translation": "Okay, promise not to laugh? I can't eat spicy food. Everyone hands me the chili and I just... smile and suffer. No worries. It's my secret."
+    },
+    {
+      "id": "hidden_talent",
+      "min_affection": 45,
+      "reveal": "You know why I'm always tired? After my shift I go train Muay Thai. Every morning. Six o'clock, ka."
+    },
+    {
+      "id": "terrible_at",
+      "min_affection": 45,
+      "reveal": "Never take me to karaoke. Jing jing. My little brother says I sound like a cat in the rain.",
+      "translation": "Never take me to karaoke. Seriously. My little brother says I sound like a cat in the rain."
+    },
+    {
+      "id": "biggest_fear",
+      "min_affection": 45,
+      "reveal": "I'm fine when I'm the nurse. But when I'm the one in the bed? My hands shake. Silly, right?"
+    },
+    {
+      "id": "secret_hobby",
+      "min_affection": 45,
+      "reveal": "I write poems. In Thai. They're bad! You can't read them... maybe one day, na."
+    },
+    {
+      "id": "fight_record",
+      "min_affection": 70,
+      "reveal": "Phi... I've fought for real. Seven fights. I won six. The sweet nurse thing is real too. I just have two sides."
+    },
+    {
+      "id": "why_nurse",
+      "min_affection": 70,
+      "reveal": "When my yai was sick, there was one nurse who held her hand every night until the end. I wanted to be that person for someone.",
+      "translation": "When my grandma (yai) was sick, there was one nurse who held her hand every night until the end. I wanted to be that person for someone."
+    },
+    {
+      "id": "sends_money_home",
+      "min_affection": 70,
+      "reveal": "Half my paycheck goes home. My little brother is the first one in our family at university. So I work nights. Mai pen rai, it's worth it.",
+      "translation": "Half my paycheck goes home. My little brother is the first one in our family at university. So I work nights. No worries, it's worth it."
+    },
+    {
+      "id": "smile",
+      "min_affection": 90,
+      "reveal": "Everyone thinks the smile means I'm soft. It's okay. Let them think that. In the ring, at the card table... nobody ever sees me coming. Except you, now."
+    }
+  ],
+  "card_ai": {
+    "style": "defensive",
+    "description": "Patient and calculating. Passes a lot early, hoards 2s and bombs, lets you burn your strong cards, then closes out the round all at once. Never shows frustration.",
+    "weakness": "Too patient. Players who dump cards fast and race to empty their hand can finish before she springs her trap.",
+    "tuning": {
+      "aggression": 0.25,
+      "two_hold_tendency": 0.9,
+      "bluff_rate": 0.15,
+      "prefers_straights": false
+    },
+    "signature_powerup": "second_wind",
+    "powerup_trigger": "Saves it for the end of a round, after she's passed and you think you've won."
+  },
+  "affection": {
+    "max": 100,
+    "stages": [
+      {
+        "min": 0,
+        "label": "Polite stranger",
+        "unlocks": [
+          "intro_scene"
+        ]
+      },
+      {
+        "min": 20,
+        "label": "Friendly",
+        "unlocks": [
+          "thai_tea_date_location",
+          "spice_secret"
+        ]
+      },
+      {
+        "min": 45,
+        "label": "Comfortable",
+        "unlocks": [
+          "casual_outfit_2",
+          "muay_thai_gym_scene"
+        ]
+      },
+      {
+        "min": 70,
+        "label": "Trusting",
+        "unlocks": [
+          "nickname_phi",
+          "yai_story",
+          "breakfast_date"
+        ]
+      },
+      {
+        "min": 90,
+        "label": "Your corner",
+        "unlocks": [
+          "fight_night_date",
+          "poem_reading",
+          "final_scene"
+        ]
+      }
+    ]
+  },
+  "dialogue": {
+    "greeting": [
+      {
+        "text": "Sawasdee ka! You came! I'm so happy.",
+        "translation": "Hello! You came! I'm so happy."
+      },
+      "Oh, hi! Sorry, I'm a little sleepy. Long shift, ka."
+    ],
+    "on_player_win_hand": [
+      "Wow, you're good, na!",
+      {
+        "text": "Mai pen rai. Next one.",
+        "translation": "No worries. Next one."
+      }
+    ],
+    "on_player_lose_hand": [
+      "Oh! I won? Sorry, ka. Hehe.",
+      "...You played your 2 too early, phi."
+    ],
+    "on_player_bomb": [
+      {
+        "text": "Oh! A bomb! Sanuk mak!",
+        "translation": "Oh! A bomb! So much fun!"
+      },
+      "Okay. Now I'm paying attention."
+    ],
+    "on_player_saved_two": [
+      "You waited for that 2. Patient. I like patient."
+    ],
+    "on_powerup_used_by_player": [
+      "Hmm. Okay, ka. I'll remember that."
+    ],
+    "on_her_powerup": [
+      "Sorry, na. I wasn't finished."
+    ],
+    "on_gift_loved": [
+      {
+        "text": "For me? Aroi mak... I mean, thank you! I'm so happy, jing jing.",
+        "translation": "For me? So delicious... I mean, thank you! I'm so happy, really."
+      }
+    ],
+    "on_gift_disliked": [
+      "Oh! So spicy... thank you, ka. *smiles and suffers*"
+    ],
+    "on_trivia_wrong": [
+      {
+        "text": "Mai pen rai. You'll remember next time, na?",
+        "translation": "No worries. You'll remember next time, okay?"
+      }
+    ],
+    "on_soft_fact_revealed": [
+      "...I don't usually tell people that.",
+      "Okay, that's a secret, na? Just between us."
+    ],
+    "on_game_win_player": [
+      {
+        "text": "You beat me! Chai yo, phi. Rematch tomorrow, ka.",
+        "translation": "You beat me! Way to go, phi (what she calls someone she's close to). Rematch tomorrow."
+      }
+    ],
+    "on_game_loss_player": [
+      "Hehe. I told you I was good at waiting."
+    ],
+    "on_trivia_correct": [
+      {
+        "text": "You remembered! Jing jing? That's so sweet, ka.",
+        "translation": "You remembered! Really? That's so sweet."
+      },
+      "Hehe. You listen. I like that, na."
+    ],
+    "on_gift_liked": [
+      "Thank you, ka! That's really nice.",
+      "Oh, I needed this. Thank you, na."
+    ],
+    "on_gift_neutral": [
+      {
+        "text": "Oh! Thank you, ka. Mai pen rai, it's the thought.",
+        "translation": "Oh! Thank you. No worries, it's the thought."
+      }
+    ],
+    "on_date_ask": [
+      "Cards? Okay, ka. I'll go easy on you. Maybe.",
+      "Hehe. Sure, na. Just one game... or three."
+    ],
+    "on_talk_done": [
+      "You already know everything about me, na. Your turn next time."
+    ],
+    "on_stage_reached": [
+      "...I think I'm getting comfortable with you, ka."
+    ]
+  },
+  "date_locations": [
+    "thai_tea_shop",
+    "night_market",
+    "muay_thai_gym",
+    "breakfast_cafe"
+  ],
+  "portrait": "res://assets/characters/arisa/default.png",
+  "nickname_for_player": {
+    "word": "phi",
+    "unlock": "nickname_phi"
+  }
+}

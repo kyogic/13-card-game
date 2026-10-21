@@ -30,6 +30,7 @@ func _record(info: Dictionary, event: String) -> void:
 
 func _run() -> void:
 	bus = root.get_node("EventBus")
+	root.get_node("SaveGame").path = "user://test_dating_save.json"  # never touch the real save
 	state = root.get_node("GameState")
 	affection = root.get_node("Affection")
 	characters = root.get_node("Characters")
@@ -43,7 +44,9 @@ func _run() -> void:
 
 
 func _affection_checks() -> void:
-	check(characters.ids() == ["jessica"], "character registry finds Jessica")
+	var ids: Array = characters.ids()
+	ids.sort()
+	check(ids == ["arisa", "jessica"], "character registry finds both girls: %s" % [ids])
 	check(config.int_value("affection.match_won") == 8, "config loaded")
 	state.reset()
 	affection.ensure("jessica")
@@ -149,11 +152,12 @@ func _dialogue_checks() -> void:
 	await process_frame
 	check(layer.screens.visible and layer.calendar.visible and not convo.visible, "demo day opens the calendar")
 	check(cal.slot_name() == "Morning" and state.time_left == 3, "morning, 3 time units")
-	check(state.inventory.get("taro_boba") == 1 and state.inventory.size() == 4, "starter inventory")
+	check(state.inventory.get("taro_boba") == 1 and state.inventory.get("mango_sticky_rice") == 1
+		and state.inventory.size() == 6, "starter inventory has gifts for both")
 	check(affection.value("jessica") == 0, "day starts at 0 affection")
-	check(cal.location_unlocked("pho_spot") and not cal.location_unlocked("boba_shop")
-		and not cal.location_unlocked("night_market") and not cal.location_unlocked("edm_festival"),
-		"only the phở spot is open at 0 affection")
+	var open: Array = cal.location_ids().filter(func(l): return cal.location_unlocked(l))
+	open.sort()
+	check(open == ["muay_thai_gym", "pho_spot", "seven_eleven"], "open at 0 affection: %s" % [open])
 	check(layer.calendar.location_buttons.boba_shop.disabled
 		and "Curious (20)" in layer.calendar.location_buttons.boba_shop.text, "locked location explains why")
 	layer.calendar.location_buttons.pho_spot.pressed.emit()
@@ -213,7 +217,7 @@ func _dialogue_checks() -> void:
 	convo.buttons.gift.pressed.emit()
 	await process_frame
 	opts = _choices()
-	check(opts.size() == 5 and opts.back().text == "Never mind", "gift list from inventory")
+	check(opts.size() == 7 and opts.back().text == "Never mind", "gift list from inventory")
 	for b in opts:
 		if b.text.begins_with("Taro Boba"):
 			b.pressed.emit()
@@ -289,7 +293,7 @@ func _calendar_checks() -> void:
 		"Curious unlocks the boba shop")
 	layer.calendar.location_buttons.pho_spot.pressed.emit()
 	await process_frame
-	check(layer.calendar.visible and "not here" in layer.calendar.message_label.text and state.time_left == 2,
+	check(layer.calendar.visible and "nobody you know" in layer.calendar.message_label.text and state.time_left == 2,
 		"empty location: message and travel costs 1")
 	layer.calendar.location_buttons.boba_shop.pressed.emit()
 	await process_frame
@@ -317,8 +321,8 @@ func _calendar_checks() -> void:
 	layer.calendar.wait_pressed.emit()
 	await process_frame
 	check(cal.slot_name() == "Night", "waiting moves to night")
-	for loc in ["pho_spot", "boba_shop"]:
-		check(cal.characters_at(loc).is_empty(), "nobody at %s at night" % loc)
+	check(cal.characters_at("pho_spot") == ["jessica"] and cal.characters_at("seven_eleven") == ["arisa"]
+		and cal.characters_at("boba_shop").is_empty(), "night: Jessica at the phở spot, Arisa at 7-Eleven")
 	var ended := []
 	bus.day_ended.connect(func(i): ended.append(i))
 	layer.calendar.wait_pressed.emit()
@@ -340,6 +344,130 @@ func _calendar_checks() -> void:
 	await _second_character_checks()
 	await _real_date_check()
 	await _fact_line_check()
+	await _two_girls_checks()
+	await _save_load_checks()
+
+
+## Arisa: data, schedule conflicts, her conversation and her Second Wind.
+func _two_girls_checks() -> void:
+	# Every slot puts the girls somewhere different: picking one means missing the other.
+	for slot in cal.slots():
+		var j = cal.schedule.characters.jessica.get(slot.id)
+		var a = cal.schedule.characters.arisa.get(slot.id)
+		check(j != null and a != null and j != a, "%s: Jessica at %s, Arisa at %s" % [slot.id, j, a])
+	for id in ["arisa", "jessica"]:
+		var p = characters.profile(id)
+		var taught := {}
+		for e in characters.talk(id) + characters.fact_lines(id):
+			for t in e.teaches:
+				taught[t] = true
+		for f in p.soft_facts():
+			taught[f.id] = true
+		var missing: Array = p.trivia().filter(func(q): return not taught.has(q.id)).map(func(q): return q.id)
+		check(missing.is_empty(), "%s: every trivia answer is taught (missing %s)" % [id, missing])
+		check(p.portrait() != "" and load(p.portrait()) is Texture2D, "%s: portrait loads" % id)
+
+	var ari = characters.profile("arisa")
+	check(ari.full_name() == "Arisa Wongsakul" and ari.to_opponent().signature_powerup == "second_wind",
+		"Arisa's profile and signature power-up")
+	check(not ("phi" in ari.line("on_game_win_player", [])) and "phi" in ari.line("on_game_win_player", ["nickname_phi"]),
+		"she only calls you phi once it's unlocked")
+	check(cal.lock_reason("thai_tea_shop") == "needs Friendly (20) with Arisa", "her locations say what they need")
+
+	# Morning: Jessica's at the phở spot, Arisa's at the gym. Meet Arisa.
+	bus.fire("demo_day_requested")
+	await process_frame
+	check(layer.calendar.meters.get_child_count() == 2 and "Arisa" in layer.calendar.meters.get_child(0).label.text
+		+ layer.calendar.meters.get_child(1).label.text, "calendar shows a named meter per girl")
+	layer.calendar.location_buttons.muay_thai_gym.pressed.emit()
+	await _drain()
+	check(convo.character_id == "arisa" and convo.title_label.text.begins_with("Arisa"), "Arisa at the gym")
+	convo.buttons.talk.pressed.emit()
+	await process_frame
+	check("night-shift" in convo.dialogue.text_label.text.to_lower() or "shift" in convo.dialogue.text_label.text,
+		"her small talk plays")
+	await _drain()
+	_choices()[0].pressed.emit()
+	await _drain()
+	check(affection.value("arisa") == 5 and affection.value("jessica") == 0, "affection is per girl")
+	# A date with Arisa: no wardrobe outfits, so her profile portrait.
+	convo.buttons.date.pressed.emit()
+	await _drain()
+	await process_frame
+	check(main.opponent.id == "arisa" and main.date_outfit == ""
+		and main.portrait.texture.resource_path == ari.portrait(), "Arisa's date uses her portrait")
+	check(main.opponent.tuning.get("two_hold_tendency") == 0.9, "her defensive card AI")
+
+	# Second Wind: she passed, the round is about to go to you, and she jumps back in.
+	var R = load("res://scripts/rules.gd")
+	main.hands[0] = [0, 40]
+	main.hands[1] = [44, 8]
+	main.last_combo = R.analyze([4])
+	main.last_cards = [4]
+	main.last_player = 0
+	main.passed = [false, true]
+	main.locked = [false, false]
+	main.current = 1
+	main.her_powerup_used = false
+	var used := []
+	var on_used := func(i): used.append(i)
+	bus.powerup_used.connect(on_used)
+	main._advance_turn()
+	check(main.current == 1 and not main.passed[1] and main.pending_cpu_play.size() == 1
+		and used.size() == 1 and used[0].id == "second_wind" and used[0].by == "opponent", "Second Wind")
+	await process_frame
+	check(layer.bubble.last_text in ari.data.dialogue.on_her_powerup, "she says her Second Wind line")
+	main.pending_cpu_play = []
+	main.passed = [false, true]
+	main.current = 1
+	main._advance_turn()
+	check(main.current == 0 and used.size() == 1, "Second Wind is once per game")
+	bus.powerup_used.disconnect(on_used)
+	main._finish_date(false)
+	await process_frame
+	layer.hide_all()
+
+
+func _save_load_checks() -> void:
+	var saver: Node = root.get_node("SaveGame")
+	saver.path = "user://test_dating_save.json"
+	saver.delete_save()
+	bus.fire("continue_day_requested")  # no save yet -> a new day
+	await process_frame
+	check(layer.calendar.visible and saver.has_save(), "Continue with no save starts (and saves) a new day")
+	affection.add("arisa", 23, "test")
+	state.inventory.taro_boba = 0
+	state.char_state("arisa").trivia_answered.append("age")
+	cal.next_slot()  # autosaves
+	check(saver.describe().begins_with("Day 1 · Afternoon"), "save description: " + saver.describe())
+	# Change things (without advancing time, which would autosave), then load the save back.
+	affection.add("arisa", 50, "test")
+	state.slot_index = 3
+	state.inventory.taro_boba = 5
+	check(saver.load_game(), "load")
+	check(state.slot_index == 1 and typeof(state.slot_index) == TYPE_INT and state.time_left == 3,
+		"slot restored as int")
+	check(affection.value("arisa") == 23 and typeof(affection.value("arisa")) == TYPE_INT, "affection restored")
+	check(state.char_state("arisa").unlocks.has("thai_tea_date_location")
+		and state.char_state("arisa").trivia_answered == ["age"] and state.inventory.taro_boba == 0,
+		"unlocks, trivia and inventory restored")
+	check(cal.location_unlocked("thai_tea_shop"), "loaded unlocks open her location")
+	layer.hide_all()
+	bus.fire("continue_day_requested")
+	await process_frame
+	check(layer.calendar.visible and cal.slot_name() == "Afternoon" and "Welcome back" in
+		layer.calendar.message_label.text, "Continue Day resumes the saved day")
+	layer.calendar.save_pressed.emit()
+	check("saved" in layer.calendar.message_label.text, "manual save")
+	# A finished day continues straight to its summary.
+	cal.next_slot(); cal.next_slot(); cal.next_slot()
+	await process_frame
+	layer.hide_all()
+	bus.fire("continue_day_requested")
+	await process_frame
+	check(layer.summary.visible and cal.day_over, "continuing a finished day shows its summary")
+	saver.delete_save()
+	layer.hide_all()
 
 
 ## After the small-talk exchanges run out, Talk moves on to one-line facts.
@@ -404,6 +532,9 @@ func _debug_checks() -> void:
 	key.pressed = true
 	layer._input(key)
 	check(dbg.visible, "F1 opens the debug panel")
+	for i in dbg.character_select.item_count:
+		if dbg.character_select.get_item_text(i) == "jessica":
+			dbg.character_select.select(i)
 	bus.fire("demo_day_requested")
 	await process_frame
 	var reached := []
