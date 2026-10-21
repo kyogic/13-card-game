@@ -30,7 +30,7 @@ func _init() -> void:
 
 
 func reset_profile() -> void:
-	profile = {"journal": {}, "wardrobe": {"owned": [], "selected": {}}}
+	profile = {"journal": {}, "wardrobe": {"owned": [], "selected": {}}, "play_seconds": 0.0}
 
 
 ## What the journal knows about her: {met, known_facts (trivia ids), gift_notes (gift -> reaction)}.

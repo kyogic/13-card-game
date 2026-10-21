@@ -7,7 +7,7 @@ A playable prototype of the Vietnamese card game **Tiến Lên** built with **Go
 - **2 Players:** you against 1 CPU, half the deck. 26 cards are dealt (13 each) and the rest stay out of play.
 
 ## Menus
-- **Story Mode:** the dating sim. Choose **New Story** or **Continue Story**.
+- **Story Mode:** the dating sim. Pick one of **3 save slots**, then **Continue**, **New Story** or **Delete**.
 - **Quickplay:** straight into a card game, either 4 players against 3 CPUs, or 2 players against Jessica (best of 3).
 - **Wardrobe**, the power-up toggles and a **music volume** slider are on the main page. The volume is saved; 0% pauses the song. Power-ups apply in both modes.
 
@@ -24,6 +24,8 @@ The story lasts **3 days**, each with Morning, Afternoon, Evening and Night.
   - It also lists which gifts she loved, liked or disliked.
   - Labels come from each trivia id, or an optional `journal_label` on the question.
 - **After each day:** a summary of that day, with **Start Day N** and **Return to main menu** buttons. The summary never shows affection, so how each girl feels stays a mystery. The calendar also has a **Main menu** button. Both menu buttons save first.
+- **Every story is different:** each new story shuffles the order of each girl's small talk, facts and quiz questions. Within a story, the order is saved, and she still only brings up what her affection allows.
+- **First meetings:** the first conversation with each girl in a story is an introduction. After that she greets you with a "hello again" line (`first_meeting` and `hello` in her dialogue data).
 - **Wrong quiz answers:** she doesn't reveal the right answer. You learn it by talking to her.
 - **During a date:** her speech bubble sits down by her feet, so it never covers her face.
 - **After Day 3:** the summary also shows totals for the whole story.
@@ -38,9 +40,17 @@ There are two girls to pursue: **Jessica** and **Arisa**. In every part of the d
 | Night | Phở Spot (late-night run) | 7-Eleven (her 3am break; not a date spot) |
 
 **Saving:**
-- The day autosaves at the start of each new slot and when the day ends. The calendar also has a **Save game** button.
-- **Continue Story** loads the save. If you saved at the end of a day, it opens that day's summary.
-- The save is one slot in `user://dating_save.json`, holding the whole story. Outfits you own are saved separately (`user://wardrobe.cfg`) and kept across stories. The music volume is in `user://save.cfg`.
+- **3 save slots**, one per player (`user://save_slot_1.json` to `_3.json`). Each slot shows its day, **time played**, outfits, journal entries and when it was last saved.
+- **Each slot holds:**
+  - The current story.
+  - The player's profile: journal reveals, owned and worn outfits, and total time played. The profile carries over when you start a **New Story** in that slot.
+- **Time played** counts while you're in Story Mode, including dates, but not on the main menu.
+- **New Story** over an existing story asks first. **Delete** asks first, then erases the slot's story and profile.
+- The day autosaves at the start of each new part of the day and when the day ends. The calendar also has a **Save game** button.
+- **Continue** loads the slot's story. If you saved at the end of a day, it opens that day's summary.
+- The menu **Wardrobe** and **Quickplay** use the last-played slot's outfits. With no slot yet, Quickplay uses the free outfits.
+- **Old saves:** `dating_save.json`, `wardrobe.cfg` and coin-era outfits are imported into Slot 1 once.
+- The music volume is in `user://save.cfg`.
 
 You have one day with four parts: Morning, Afternoon, Evening and Night. In each part, pick where to go.
 - **If Jessica is there,** you can:
@@ -116,12 +126,12 @@ Her profile is `data/characters/jessica.json`.
 ### Wardrobe
 - **Buying:** outfits cost Story Mode money: $150, $200, $300 and $400 per girl. Each girl's Classic is free.
   - Buy them from the **Wardrobe** button on the story calendar.
-  - Outfits are **yours to keep**, even in a new story, so collecting them all takes several playthroughs.
+  - Outfits are **yours to keep** in your save slot, even in a new story, so collecting them all takes several playthroughs.
 - **Wearing:**
   - Pick **Wear** and she wears that outfit everywhere: conversations, dates and Quickplay.
   - **Take off** returns to her choosing one of your outfits for each date. Conversations then show her Classic.
 - **From the main menu:** the Wardrobe lets you browse and change what she wears, but buying needs a story's money.
-- **Data:** outfits and prices are in `data/outfits.json`. Ownership and what's worn are in `user://wardrobe.cfg`.
+- **Data:** outfits and prices are in `data/outfits.json`. Ownership and what's worn are in the save slot's profile.
 - **The old coin system is gone.** Outfits unlocked with coins carry over.
 
 ### Character art layout
@@ -178,7 +188,8 @@ Suit Up, Lucky Draw and Wild Card can't be used on the card you're required to o
 | `scripts/main.gd` | Card game: menu, table UI, turn flow, matches, power-ups; emits card events |
 | `scripts/character.gd` | Reads a character profile JSON (dialogue, stages, gifts, trivia, AI tuning) |
 | `scripts/core/`, `scripts/dating/`, `scripts/ui/` | Dating layer (see Story Mode above) |
-| `scripts/core/save_system.gd` | Save/load of the day (`SaveGame` autoload) |
+| `scripts/core/save_system.gd` | Save slots, player profiles and time played (`SaveGame` autoload) |
+| `scripts/ui/slots_screen.gd` | Story Mode slot picker |
 | `tests/dating_test.gd` | Dating layer: affection, dialogue, calendar, summary, debug panel, a second character, and a real date |
 | `tests/sim_test.gd` | Headless rule tests plus 300 CPU-only games |
 | `tests/ui_test.gd` | Plays full games through the real scene, driving the human seat with Hint |

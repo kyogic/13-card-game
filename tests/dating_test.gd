@@ -730,6 +730,20 @@ func _save_load_checks() -> void:
 	await process_frame
 	check(not picker.visible and layer.calendar.visible and saver.slot == 1 and saver.has_slot(1),
 		"New Story in an empty slot starts (and saves) a story there")
+	# Time played: counted while in Story Mode, kept by the slot's player.
+	state.profile.play_seconds = 0.0
+	saver.tick(3725.0)
+	saver.save_game()
+	check(saver.slot_info(1).play_seconds == 3725 and saver.format_play_time(3725) == "1h 02m"
+		and saver.format_play_time(75) == "1m", "time played is saved")
+	layer.hide_all()
+	saver.tick(500.0)
+	check(int(state.profile.play_seconds) == 3725, "no time counts on the main menu")
+	bus.fire("story_menu_requested")
+	check("Time played 1h 02m" in picker.rows[1].info.text, "slot shows time played: " + picker.rows[1].info.text)
+	picker.rows[1].continue.pressed.emit()
+	await process_frame
+	check(saver.playing, "Continue counts time again")
 	affection.add("arisa", 23, "test")
 	state.inventory.taro_boba = 0
 	state.char_state("arisa").trivia_answered.append("age")

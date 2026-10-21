@@ -104,6 +104,7 @@ func _ready() -> void:
 
 
 func hide_all() -> void:
+	SaveGame.playing = false
 	screens.visible = false
 	journal.visible = false
 	shop.visible = false
@@ -127,6 +128,7 @@ func start_story(slot := 0) -> void:
 		slot = SaveGame.slot if SaveGame.slot != 0 else 1
 	slots.visible = false
 	SaveGame.new_story(slot)
+	SaveGame.playing = true
 	var names: Array = Characters.ids().map(func(id): return Characters.profile(id).first_name())
 	calendar.show_message("%d days. %s are out there somewhere, but you can only be in one place at a time."
 		% [Calendar.days(), " and ".join(names)])
@@ -141,6 +143,7 @@ func continue_story(slot := 0) -> void:
 	if not SaveGame.load_game(slot):
 		start_story(slot)
 		return
+	SaveGame.playing = true
 	if Calendar.day_over:
 		_show_summary()
 		return
@@ -273,7 +276,7 @@ func _show_summary() -> void:
 ## "Start Day N" after a day's summary, or back to the menu when the story is over.
 func _on_summary_closed() -> void:
 	if Calendar.story_over():
-		hide_all()
+		_return_to_menu()
 		return
 	Calendar.start_next_day()
 	calendar.show_message("Day %d. A new morning." % GameState.day)

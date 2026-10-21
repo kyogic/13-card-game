@@ -92,8 +92,9 @@ func refresh() -> void:
 			var where: String = "Story finished" if info.story_over else (
 				"Day %d of %d · %s" % [info.day, Calendar.days(), "end of day" if info.day_over else info.slot_name]) \
 				if info.has_story else "No story yet"
-			r.info.text = "Slot %d   ·   %s\n%d outfits  ·  %d journal entries  ·  saved %s" % [n, where,
-				info.outfits, info.facts, info.saved_at.replace("T", " ")]
+			r.info.text = "Slot %d   ·   %s\nTime played %s  ·  %d outfits  ·  %d journal entries\nSaved %s" % [n,
+				where, SaveGame.format_play_time(info.play_seconds), info.outfits, info.facts,
+				info.saved_at.replace("T", " ")]
 		r.continue.disabled = not info.get("has_story", false)
 		r.delete.disabled = not info.exists
 

@@ -10,6 +10,7 @@ const SLOT_COUNT := 3
 var dir := "user://"
 var slot := 0                  # active slot (1..SLOT_COUNT), 0 = none
 var story_loaded := false      # the active slot's story is in GameState (not just its profile)
+var playing := false           # in Story Mode right now (counts towards the slot's time played)
 ## Pre-slot saves, imported into slot 1 once.
 var legacy_story_path := "user://dating_save.json"
 var legacy_wardrobe_path := "user://wardrobe.cfg"
@@ -18,6 +19,22 @@ var legacy_progress_path := "user://save.cfg"
 
 func _ready() -> void:
 	startup()
+
+
+func _process(delta: float) -> void:
+	tick(delta)
+
+
+## Adds to the active player's time played while they're in Story Mode.
+func tick(delta: float) -> void:
+	if playing and slot != 0:
+		GameState.profile.play_seconds = float(GameState.profile.get("play_seconds", 0.0)) + delta
+
+
+## Quitting mid-story keeps the time played (and the story) since the last autosave.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and playing:
+		save_game()
 
 
 ## Imports old saves (once), then loads the last-used slot's profile.
@@ -101,13 +118,15 @@ func delete_slot(n: int) -> void:
 	if slot == n:
 		slot = 0
 		story_loaded = false
+		playing = false
 		GameState.reset_profile()
 		var meta := _meta()
 		meta.set_value("slots", "last", 0)
 		meta.save(dir + "slots.cfg")
 
 
-## For the slot picker: {exists, has_story, day, slot_name, day_over, story_over, saved_at, outfits, facts}.
+## For the slot picker: {exists, has_story, day, slot_name, day_over, story_over, saved_at, outfits, facts,
+## play_seconds}.
 func slot_info(n: int) -> Dictionary:
 	var data := _read(n)
 	if data.is_empty():
@@ -123,8 +142,24 @@ func slot_info(n: int) -> Dictionary:
 	var day_over: bool = data.get("day_over", false)
 	return {"exists": true, "has_story": data.has("story"), "day": day, "slot_name": slots[i].name if i < slots.size() else "",
 		"day_over": day_over, "story_over": day_over and day >= Calendar.days(),
-		"saved_at": data.get("saved_at", ""), "outfits": profile.get("wardrobe", {}).get("owned", []).size(),
-		"facts": facts}
+		"saved_at": data.get("saved_at", ""), "outfits": _outfit_count(profile.get("wardrobe", {}).get("owned", [])),
+		"facts": facts, "play_seconds": int(profile.get("play_seconds", 0))}
+
+
+## Owned outfits, counting the free ones even before the wardrobe was first opened.
+func _outfit_count(owned: Array) -> int:
+	var all := {}
+	for id in owned:
+		all[id] = true
+	for cid in Wardrobe.outfits:
+		all[Wardrobe.outfits[cid][0].id] = true
+	return all.size()
+
+
+## 75 -> "1m", 3725 -> "1h 02m".
+static func format_play_time(seconds: int) -> String:
+	var m := seconds / 60
+	return "%dh %02dm" % [m / 60, m % 60] if m >= 60 else "%dm" % m
 
 
 ## "Day 2 of 3 · Afternoon · saved 2026-10-21T10:30:00" for the active slot, or "".
@@ -143,6 +178,7 @@ func _apply_profile(data: Dictionary) -> void:
 		GameState.profile.journal = p.journal.duplicate(true)
 	if p.get("wardrobe") is Dictionary:
 		GameState.profile.wardrobe = p.wardrobe.duplicate(true)
+	GameState.profile.play_seconds = float(p.get("play_seconds", 0.0))
 	Wardrobe.clean(GameState.profile.wardrobe)
 
 
