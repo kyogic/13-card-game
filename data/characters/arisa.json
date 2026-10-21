@@ -574,6 +574,17 @@
     ],
     "on_stage_reached": [
       "...I think I'm getting comfortable with you, ka."
+    ],
+    "first_meeting": [
+      {
+        "text": "Oh! Sawasdee ka. Sorry, I'm Arisa. You can call me Ari, na.",
+        "translation": "Oh! Hello. Sorry, I'm Arisa. You can call me Ari, okay?"
+      },
+      "Hi! I don't think we've met. I'm Arisa, ka. Nice to meet you."
+    ],
+    "hello": [
+      "Oh, hi again, ka!",
+      "You came back! Hehe. Hello, na."
     ]
   },
   "date_locations": [

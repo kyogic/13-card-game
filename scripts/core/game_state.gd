@@ -9,7 +9,7 @@ var location := ""             # where the player is this slot ("" = choosing)
 var in_date := false           # a Tiến Lên date is being played
 ## character id -> {affection, unlocks, stages, trivia_answered (ids), talks_seen (exchange and
 ## fact ids), soft_facts_seen, start_affection, start_unlocks, met, known_facts (trivia ids the
-## journal shows), gift_notes (gift id -> her reaction)}
+## journal shows), gift_notes (gift id -> her reaction), order (pool -> ids shuffled once per story)}
 var characters := {}
 var inventory := {}            # gift id -> count
 var money := 0                 # story money ($), see Economy
@@ -39,7 +39,7 @@ func char_state(id: String) -> Dictionary:
 	if not characters.has(id):
 		characters[id] = {"affection": 0, "unlocks": [], "stages": [], "trivia_answered": [],
 			"talks_seen": [], "soft_facts_seen": [], "start_affection": 0, "start_unlocks": [],
-			"story_start_affection": 0, "met": false, "known_facts": [], "gift_notes": {}}
+			"story_start_affection": 0, "met": false, "known_facts": [], "gift_notes": {}, "order": {}}
 	return characters[id]
 
 

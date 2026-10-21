@@ -121,21 +121,69 @@ func _affection_checks() -> void:
 	check(state.to_dict().characters.jessica.affection == 79, "state serializes")
 
 
+var first_exchange: Dictionary = {}
+
+
+func _texts(entries: Array) -> Array:
+	return entries.map(func(e): return e.text if e is Dictionary else e)
+
+
+## Every story shuffles what she talks about and asks; the order holds across save/load.
+func _order_checks() -> void:
+	var orders := []
+	for i in 4:
+		bus.fire("new_story_requested")
+		await process_frame
+		layer.calendar.location_buttons.pho_spot.pressed.emit()
+		await _drain()
+		check(convo.dialogue.text_label.text in _texts(characters.profile("jessica").data.dialogue.first_meeting)
+			or not convo.dialogue.is_busy(), "new story: she introduces herself again")
+		convo._ordered("exchanges", characters.talk("jessica"))
+		convo._ordered("facts", characters.fact_lines("jessica"))
+		convo._ordered("soft_facts", characters.profile("jessica").soft_facts())
+		convo._ordered("quiz", convo._unanswered_trivia())
+		var o: Dictionary = state.char_state("jessica").order
+		orders.append([o.exchanges.duplicate(), o.facts.duplicate(), o.quiz.duplicate(), o.soft_facts.duplicate()])
+		check(o.exchanges.size() == characters.talk("jessica").size() and o.quiz.size() == 18
+			and o.soft_facts.size() == characters.profile("jessica").soft_facts().size(), "every pool is ordered")
+	check(orders.map(func(x): return x[0]).any(func(x): return x != orders[0][0])
+		and orders.map(func(x): return x[2]).any(func(x): return x != orders[0][2]), "order differs between stories")
+	# Same story: the order survives a save/load, and the quiz only ever offers gated questions in order.
+	var saved: Array = state.char_state("jessica").order.quiz.duplicate()
+	root.get_node("SaveGame").save_game()
+	state.char_state("jessica").order = {}
+	root.get_node("SaveGame").load_game()
+	check(state.char_state("jessica").order.quiz == saved, "order is saved with the story")
+	var asked: Dictionary = convo._ordered("quiz", convo._unanswered_trivia())[0]
+	check(asked.id == saved[0] and asked.get("min_affection", 0) <= affection.value("jessica"),
+		"the quiz asks the next available question in this story's order")
+	# Second conversation in the same story: "hello again", not an introduction.
+	convo._on_leave()
+	layer.calendar.location_buttons.pho_spot.pressed.emit()
+	await process_frame
+	check(convo.dialogue.text_label.text in _texts(characters.profile("jessica").data.dialogue.hello),
+		"after the first meeting she says hello again: " + convo.dialogue.text_label.text)
+	await _drain()
+	layer.hide_all()
+
+
 # --- Journal ------------------------------------------------------------------------
 
 func _journal_checks(quizzed: Dictionary) -> void:
 	var journal: Node = root.get_node("Journal")
 	var st: Dictionary = state.char_state("jessica")
 	check(st.met and not state.char_state("arisa").met, "journal knows who you've met")
-	check(st.known_facts.has("boba_order") and st.known_facts.has(quizzed.id),
+	var taught: String = first_exchange.teaches[0]
+	var taught_q: Dictionary = characters.profile("jessica").trivia().filter(func(t): return t.id == taught)[0]
+	check(st.known_facts.has(taught) and st.known_facts.has(quizzed.id),
 		"talk and right quiz answers are recorded: %s" % [st.known_facts])
 	var entries: Array = journal.entries("jessica")
 	check(entries.size() == st.known_facts.size() and entries.any(
-		func(e): return e.label == "Boba order" and e.text == "Taro with lychee jelly"), "journal entries")
+		func(e): return e.id == taught and e.text == taught_q.answer), "journal entries")
 	check(journal.gift_notes("jessica") == {"loved": ["taro_boba"]}, "gift reactions noted")
 	convo.journal_pressed.emit()
 	var page = layer.journal
-	check(page.visible and page.character_id == "jessica" and "Taro with lychee jelly" in page.facts_label.text
+	check(page.visible and page.character_id == "jessica" and taught_q.answer in page.facts_label.text
 		and ("of %d" % journal.total("jessica")) in page.progress_label.text and "Taro Boba" in page.gifts_label.text,
 		"journal page from the conversation")
 	page.show_page("arisa")
@@ -199,6 +247,8 @@ func _dialogue_checks() -> void:
 	db.advance()
 	check(not db.typing and db.text_label.visible_characters == -1, "click completes the line")
 	check(db.speaker_label.text == "Jessica", "speaker name shown")
+	check(db.text_label.text in _texts(characters.profile("jessica").data.dialogue.first_meeting),
+		"first conversation: she introduces herself")
 	await _drain()
 	check(not db.is_busy() and not convo.busy, "greeting done")
 
@@ -209,9 +259,11 @@ func _dialogue_checks() -> void:
 	check(opts.size() == 3, "talk shows 3 choices")
 	opts[0].pressed.emit()
 	await process_frame
-	check(affection.value("jessica") == 5 and state.char_state("jessica").talks_seen == ["boba"], "talk good +5")
+	var first_id: String = state.char_state("jessica").order.exchanges[0]
+	first_exchange = characters.talk("jessica").filter(func(e): return e.id == first_id)[0]
+	check(affection.value("jessica") == 5 and state.char_state("jessica").talks_seen == [first_id], "talk good +5")
 	check(state.time_left == 3, "time is spent when the exchange finishes")
-	check("lychee" in db.text_label.text, "her reply reveals the trivia answer")
+	check(db.text_label.text == first_exchange.choices[0].reply[0].text, "her reply plays")
 	await _drain()
 	check(state.time_left == 2, "talk costs 1")
 
@@ -556,8 +608,9 @@ func _two_girls_checks() -> void:
 	check(convo.character_id == "arisa" and convo.title_label.text.begins_with("Arisa"), "Arisa at the gym")
 	convo.buttons.talk.pressed.emit()
 	await process_frame
-	check("night-shift" in convo.dialogue.text_label.text.to_lower() or "shift" in convo.dialogue.text_label.text,
-		"her small talk plays")
+	var ari_first: String = state.char_state("arisa").order.exchanges[0]
+	var ari_ex: Dictionary = characters.talk("arisa").filter(func(e): return e.id == ari_first)[0]
+	check(convo.dialogue.text_label.text == ari.normalize(ari_ex.lines[0], []).text, "her small talk plays")
 	await _drain()
 	_choices()[0].pressed.emit()
 	await _drain()
@@ -683,9 +736,13 @@ func _fact_line_check() -> void:
 	convo.refresh()
 	convo.buttons.talk.pressed.emit()
 	await process_frame
-	check("cà phê sữa đá" in convo.dialogue.text_label.text and _choices().is_empty(), "fact line after exchanges")
+	var fact_id: String = st.order.facts[0]
+	var fact: Dictionary = characters.fact_lines("jessica").filter(func(f): return f.id == fact_id)[0]
+	check(convo.dialogue.text_label.text == characters.profile("jessica").normalize(fact.lines[0], []).text
+		and _choices().is_empty(), "fact line after exchanges")
 	await _drain()
-	check(st.talks_seen.has("morning_drink") and state.time_left == 2, "fact line recorded and costs talk time")
+	check(st.talks_seen.has(fact_id) and state.time_left == 2, "fact line recorded and costs talk time")
+	await _order_checks()
 	layer.hide_all()
 
 

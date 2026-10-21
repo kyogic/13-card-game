@@ -114,8 +114,15 @@ func open(id: String, location: String, location_name: String) -> void:
 	meter.set_character(id)
 	_clear_choices()
 	visible = true
+	# You've only just met the first time; after that it's a "hello again".
+	var first_time: bool = not GameState.char_state(id).met
 	EventBus.fire("conversation_opened", {"character_id": id, "location": location})
-	_say_event("greeting")
+	if first_time and profile.has_lines("first_meeting"):
+		_say_event("first_meeting")
+	elif profile.has_lines("hello"):
+		_say_event("hello")
+	else:
+		_say_event("greeting")
 
 
 func set_status(text: String) -> void:
@@ -219,16 +226,32 @@ func _show_choices(options: Array, on_pick: Callable) -> void:
 ## then the next small-talk exchange, then a one-line fact. Returns {kind, data} or null.
 func _next_talk():
 	var st: Dictionary = GameState.char_state(character_id)
-	for f in profile.soft_facts():
+	for f in _ordered("soft_facts", profile.soft_facts()):
 		if st.affection >= f.get("min_affection", 0) and not st.soft_facts_seen.has(f.id):
 			return {"kind": "soft_fact", "data": f}
-	for ex in Characters.talk(character_id):
+	for ex in _ordered("exchanges", Characters.talk(character_id)):
 		if not st.talks_seen.has(ex.id):
 			return {"kind": "exchange", "data": ex}
-	for f in Characters.fact_lines(character_id):
+	for f in _ordered("facts", Characters.fact_lines(character_id)):
 		if not st.talks_seen.has(f.id):
 			return {"kind": "fact", "data": f}
 	return null
+
+
+## `items` (each with an id) in this story's shuffled order for `pool`, so every playthrough
+## brings things up in a different order. The order is saved with the story, so it holds
+## across save/load; anything new in the data is shuffled in.
+func _ordered(pool: String, items: Array) -> Array:
+	var orders: Dictionary = GameState.char_state(character_id).order
+	var ids: Array = items.map(func(it): return Character.trivia_id(it))
+	var order: Array = orders.get(pool, []).filter(func(id): return ids.has(id))
+	var fresh: Array = ids.filter(func(id): return not order.has(id))
+	fresh.shuffle()
+	order.append_array(fresh)
+	orders[pool] = order
+	var sorted := items.duplicate()
+	sorted.sort_custom(func(a, b): return order.find(Character.trivia_id(a)) < order.find(Character.trivia_id(b)))
+	return sorted
 
 
 func _on_talk() -> void:
@@ -280,10 +303,10 @@ func _unanswered_trivia() -> Array:
 
 
 func _on_quiz() -> void:
-	var pool := _unanswered_trivia()
+	var pool := _ordered("quiz", _unanswered_trivia())
 	if pool.is_empty():
 		return
-	var q: Dictionary = pool.pick_random()
+	var q: Dictionary = pool[0]  # next in this story's shuffled order (within her affection gate)
 	var options: Array = q.wrong.duplicate()
 	options.append(q.answer)
 	options.shuffle()

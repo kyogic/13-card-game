@@ -507,6 +507,18 @@
     ],
     "on_stage_reached": [
       "...Okay, you're growing on me."
+    ],
+    "first_meeting": [
+      "Uh... hi? You're kinda standing in my light. I'm Jess.",
+      "New face. Okay. I'm Jessica. Jess, if you're lucky."
+    ],
+    "hello": [
+      "Oh, it's you again. Hey.",
+      {
+        "text": "Ê, you're back. Took you long enough.",
+        "translation": "Hey, you're back. Took you long enough."
+      },
+      "Look who showed up."
     ]
   },
   "date_locations": [
