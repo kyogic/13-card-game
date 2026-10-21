@@ -114,14 +114,22 @@ func refresh() -> void:
 	var name: String = Characters.profile(character_id).first_name() if Characters.profile(character_id) \
 		else character_id.capitalize()
 	title.text = "%s's Wardrobe" % name
-	money_label.text = "You have $%d" % GameState.money if can_buy \
-		else "Outfits are bought with money you earn in Story Mode."
+	var player := SaveGame.slot != 0
+	if can_buy:
+		money_label.text = "You have $%d" % GameState.money
+	elif player:
+		money_label.text = "Save slot %d  ·  Outfits are bought with money you earn in Story Mode." % SaveGame.slot
+	else:
+		money_label.text = "Start a story to begin your wardrobe."
 	for o in Wardrobe.outfits_for(character_id):
 		var slot: Dictionary = slots[o.id]
 		var button: Button = slot.button
 		var owned: bool = Wardrobe.is_owned(o.id)
 		slot.image.modulate = Color.WHITE if owned else Color(0.15, 0.15, 0.15)
-		if Wardrobe.worn(character_id) == o.id:
+		if not player:
+			button.text = "Free" if owned else "$%d" % o.price
+			button.disabled = true
+		elif Wardrobe.worn(character_id) == o.id:
 			button.text = "Wearing  (take off)"
 			button.disabled = false
 		elif owned:

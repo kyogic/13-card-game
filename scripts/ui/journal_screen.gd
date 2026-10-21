@@ -97,9 +97,8 @@ func show_page(id: String) -> void:
 	for i in tabs.get_child_count():
 		tabs.get_child(i).set_pressed_no_signal(ids[i] == id)
 	var profile = Characters.profile(id)
-	var st: Dictionary = GameState.char_state(id)
 	title.text = "%s  “%s”" % [profile.full_name(), profile.data.get("nickname", profile.first_name())]
-	if not st.met:
+	if not GameState.journal_state(id).met:
 		progress_label.text = ""
 		facts_label.text = "You haven't met her yet."
 		gifts_label.text = ""

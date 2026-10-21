@@ -24,18 +24,29 @@ func check(cond: bool, msg: String) -> void:
 		print("FAIL: ", msg)
 
 
+const TEST_DIR := "user://test_slots/"
+
+
+## Points SaveGame at an empty test directory (no slots, no legacy files) and starts up.
+func _use_test_saves() -> void:
+	var saver: Node = root.get_node("SaveGame")
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(TEST_DIR))
+	for f in DirAccess.get_files_at(TEST_DIR):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_DIR + f))
+	saver.dir = TEST_DIR
+	saver.legacy_story_path = TEST_DIR + "legacy_dating_save.json"
+	saver.legacy_wardrobe_path = TEST_DIR + "legacy_wardrobe.cfg"
+	saver.legacy_progress_path = TEST_DIR + "legacy_save.cfg"
+	saver.startup()
+
+
 func _record(info: Dictionary, event: String) -> void:
 	events.append([event, info])
 
 
 func _run() -> void:
 	bus = root.get_node("EventBus")
-	root.get_node("SaveGame").path = "user://test_dating_save.json"  # never touch the real save
-	var wardrobe: Node = root.get_node("Wardrobe")
-	wardrobe.path = "user://test_wardrobe.cfg"
-	wardrobe.legacy_path = "user://test_no_legacy.cfg"
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(wardrobe.path))
-	wardrobe.load_collection()
+	_use_test_saves()  # never touch the real save slots
 	state = root.get_node("GameState")
 	affection = root.get_node("Affection")
 	characters = root.get_node("Characters")
@@ -171,8 +182,8 @@ func _order_checks() -> void:
 
 func _journal_checks(quizzed: Dictionary) -> void:
 	var journal: Node = root.get_node("Journal")
-	var st: Dictionary = state.char_state("jessica")
-	check(st.met and not state.char_state("arisa").met, "journal knows who you've met")
+	var st: Dictionary = state.journal_state("jessica")
+	check(st.met and not state.journal_state("arisa").met, "journal knows who you've met")
 	var taught: String = first_exchange.teaches[0]
 	var taught_q: Dictionary = characters.profile("jessica").trivia().filter(func(t): return t.id == taught)[0]
 	check(st.known_facts.has(taught) and st.known_facts.has(quizzed.id),
@@ -470,9 +481,11 @@ func _wardrobe_checks() -> void:
 	main._start_match()
 	check(main.portrait.texture.resource_path == maid_path, "and in Quickplay")
 	main._show_menu()
-	# Ownership and what she's wearing are kept forever (not part of the story save).
-	w.load_collection()
-	check(w.is_owned("jessica_maid") and w.worn("jessica") == "jessica_maid", "the wardrobe is saved")
+	# Ownership and what she's wearing belong to the save slot's player, not the story.
+	var saver: Node = root.get_node("SaveGame")
+	state.reset_profile()
+	saver.load_profile(saver.slot)
+	check(w.is_owned("jessica_maid") and w.worn("jessica") == "jessica_maid", "the wardrobe is saved in the slot")
 	bus.fire("new_story_requested")
 	await process_frame
 	check(w.is_owned("jessica_maid") and state.money == 30, "a new story keeps your outfits but not your money")
@@ -498,23 +511,52 @@ func _wardrobe_checks() -> void:
 	screen.get_child(1).find_children("*", "Button", true, false).filter(
 		func(b): return b.text == "Close")[0].pressed.emit()
 	check(not layer.screens.visible, "closing the menu wardrobe returns to the menu")
-	# Coin-era saves: outfits unlocked with coins carry over (old "abg" ids too; removed ones drop).
+	# Another slot is another player: their own wardrobe.
+	layer.hide_all()
+	bus.fire("new_story_requested", {"slot": 2})
+	await process_frame
+	check(saver.slot == 2 and not w.is_owned("jessica_maid") and w.worn("jessica") == ""
+		and w.owned().size() == 2, "slot 2 has a fresh wardrobe: %s" % [w.owned()])
+	layer.hide_all()
+	bus.fire("continue_story_requested", {"slot": 1})
+	await process_frame
+	check(saver.slot == 1 and w.is_owned("jessica_maid"), "back in slot 1, the outfit is still owned")
+	layer.hide_all()
+	await _legacy_checks()
+	_use_test_saves()
+	layer.hide_all()
+
+
+## Pre-slot saves (one story file, wardrobe.cfg, coin-era save.cfg) are imported into slot 1.
+func _legacy_checks() -> void:
+	var w: Node = root.get_node("Wardrobe")
+	var saver: Node = root.get_node("SaveGame")
+	_use_test_saves()
+	check(not saver.has_slot(1) and saver.slot == 0 and w.owned().size() == 2, "no legacy files: no slots")
+	# Coin-era outfits (old "abg" ids too; removed ones drop).
+	for f in DirAccess.get_files_at(TEST_DIR):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_DIR + f))
 	var legacy := ConfigFile.new()
 	legacy.set_value("progress", "coins", 5)
 	legacy.set_value("progress", "unlocked", ["jessica", "abg_lace", "jessica_smile", "arisa_glam"])
-	legacy.save("user://test_legacy.cfg")
-	w.legacy_path = "user://test_legacy.cfg"
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(w.path))
-	w.load_collection()
+	legacy.save(saver.legacy_progress_path)
+	var old_story := {"version": 1, "day_over": false, "state": {"day": 2, "slot_index": 1, "time_left": 3, "money": 77,
+		"characters": {"jessica": {"affection": 30, "met": true, "known_facts": ["age"], "gift_notes": {"loved": ["taro_boba"]}}}}}
+	var f := FileAccess.open(saver.legacy_story_path, FileAccess.WRITE)
+	f.store_string(JSON.stringify(old_story))
+	f.close()
+	saver.startup()
+	check(saver.has_slot(1) and saver.slot == 1 and not saver.has_slot(2), "old saves become slot 1")
 	check(w.is_owned("jessica_lace") and w.is_owned("arisa_glam") and not w.is_owned("jessica_maid")
-		and not w.owned.has("jessica_smile") and w.is_owned("arisa"), "coin-era outfits carry over: %s" % [w.owned])
-	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_legacy.cfg"))
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(w.path))
-	w.legacy_path = "user://test_no_legacy.cfg"
-	w.load_collection()
-	check(w.owned.size() == 2, "fresh wardrobe: just the free outfits")
-	root.get_node("SaveGame").delete_save()
-	layer.hide_all()
+		and not w.owned().has("jessica_smile") and w.is_owned("arisa"), "coin-era outfits carry over: %s" % [w.owned()])
+	check(state.journal_state("jessica").known_facts == ["age"] and state.journal_state("jessica").met
+		and state.journal_state("jessica").gift_notes.has("loved"), "the old journal moves into the profile")
+	check(saver.load_game(1) and state.day == 2 and state.money == 77 and cal.slot_name() == "Afternoon",
+		"the old story continues in slot 1")
+	# Only once: deleting slot 1 doesn't bring the old save back.
+	saver.delete_slot(1)
+	saver.startup()
+	check(not saver.has_slot(1) and saver.slot == 0, "migration runs once")
 
 
 ## Story money and the shop.
@@ -567,7 +609,7 @@ func _economy_checks() -> void:
 	check("Money:  $100  (+70 today)" in layer.summary.body.text, "summary: money: " + layer.summary.body.text)
 	layer.summary.continue_button.pressed.emit()
 	check(state.day == 2 and state.shop_stock.size() == 6 and state.day_start_money == 100, "next morning restocks")
-	root.get_node("SaveGame").delete_save()
+	root.get_node("SaveGame").delete_slot(1)
 	layer.hide_all()
 
 
@@ -676,16 +718,28 @@ func _two_girls_checks() -> void:
 
 func _save_load_checks() -> void:
 	var saver: Node = root.get_node("SaveGame")
-	saver.path = "user://test_dating_save.json"
-	saver.delete_save()
-	bus.fire("continue_story_requested")  # no save yet -> a new day
+	for n in 3:
+		saver.delete_slot(n + 1)
+	check(saver.slot == 0, "no slots")
+	# Story Mode opens the slot picker: three empty slots.
+	bus.fire("story_menu_requested")
+	var picker = layer.slots
+	check(picker.visible and picker.rows.size() == 3 and picker.rows.values().all(
+		func(r): return r.continue.disabled and r.delete.disabled and "Empty" in r.info.text), "three empty slots")
+	picker.rows[1].new.pressed.emit()  # empty slot: no confirmation needed
 	await process_frame
-	check(layer.calendar.visible and saver.has_save(), "Continue with no save starts (and saves) a new day")
+	check(not picker.visible and layer.calendar.visible and saver.slot == 1 and saver.has_slot(1),
+		"New Story in an empty slot starts (and saves) a story there")
 	affection.add("arisa", 23, "test")
 	state.inventory.taro_boba = 0
 	state.char_state("arisa").trivia_answered.append("age")
 	cal.next_slot()  # autosaves
 	check(saver.describe().begins_with("Day 1 of 3 · Afternoon"), "save description: " + saver.describe())
+	bus.fire("story_menu_requested")
+	check(not picker.rows[1].continue.disabled and "Day 1 of 3 · Afternoon" in picker.rows[1].info.text
+		and picker.rows[2].continue.disabled, "slot 1 shows its story: " + picker.rows[1].info.text)
+	picker.back_pressed.emit()
+	check(not layer.screens.visible, "Back leaves the slot picker")
 	# Change things (without advancing time, which would autosave), then load the save back.
 	affection.add("arisa", 50, "test")
 	state.slot_index = 3
@@ -699,10 +753,11 @@ func _save_load_checks() -> void:
 		"unlocks, trivia and inventory restored")
 	check(cal.location_unlocked("thai_tea_shop"), "loaded unlocks open her location")
 	layer.hide_all()
-	bus.fire("continue_story_requested")
+	bus.fire("story_menu_requested")
+	picker.rows[1].continue.pressed.emit()
 	await process_frame
 	check(layer.calendar.visible and cal.slot_name() == "Afternoon" and "Welcome back" in
-		layer.calendar.message_label.text, "Continue Day resumes the saved day")
+		layer.calendar.message_label.text, "Continue resumes the slot's saved day")
 	layer.calendar.save_pressed.emit()
 	check("saved" in layer.calendar.message_label.text, "manual save")
 	# Main menu from the calendar saves first.
@@ -720,7 +775,35 @@ func _save_load_checks() -> void:
 	bus.fire("continue_story_requested")
 	await process_frame
 	check(layer.summary.visible and cal.day_over and state.day == 1, "continuing a finished day shows its summary")
-	saver.delete_save()
+	layer.hide_all()
+	# A second slot is independent; New Story over an existing story asks first.
+	bus.fire("story_menu_requested")
+	picker.rows[2].new.pressed.emit()
+	await process_frame
+	check(saver.slot == 2 and state.day == 1 and cal.slot_name() == "Morning" and affection.value("arisa") == 0,
+		"slot 2 is a separate story")
+	layer.hide_all()
+	bus.fire("story_menu_requested")
+	check(saver.slot_info(1).day_over and not picker.rows[2].continue.disabled, "both slots listed")
+	picker.rows[1].new.pressed.emit()
+	check(picker.confirm.visible and "Slot 1" in picker.confirm.dialog_text and saver.slot == 2,
+		"New Story over a story asks first")
+	picker.confirm.confirmed.emit()
+	await process_frame
+	check(saver.slot == 1 and not cal.day_over and affection.value("arisa") == 0, "confirmed: slot 1 starts over")
+	layer.hide_all()
+	# Delete from the slot picker (asks first).
+	bus.fire("story_menu_requested")
+	picker.rows[2].delete.pressed.emit()
+	check(picker.confirm.visible and "Delete Slot 2" in picker.confirm.dialog_text and saver.has_slot(2),
+		"Delete asks first")
+	picker.confirm.confirmed.emit()
+	check(not saver.has_slot(2) and "Empty" in picker.rows[2].info.text and picker.rows[2].delete.disabled,
+		"deleting a slot empties it")
+	picker.rows[1].delete.pressed.emit()
+	picker.confirm.confirmed.emit()
+	check(not saver.has_slot(1) and saver.slot == 0 and state.profile.journal.is_empty(),
+		"deleting the active slot clears the player's profile")
 	layer.hide_all()
 
 

@@ -1,16 +1,14 @@
 extends Node
-## Outfit collection (data/outfits.json). Outfits are bought with Story Mode money and kept
-## forever (user://wardrobe.cfg), across new stories. Each girl's first outfit is free.
+## Outfits (data/outfits.json). Bought with Story Mode money and kept in the player profile
+## of the save slot (GameState.profile.wardrobe), so they carry over to new stories in that
+## slot. Each girl's first outfit is free.
 ##
 ## Wearing: if you've picked an outfit for her, she wears it everywhere (conversations,
 ## dates, Quickplay). If not, she picks one of your owned outfits for each date.
 
 const OUTFITS_PATH := "res://data/outfits.json"
-var path := "user://wardrobe.cfg"
-var legacy_path := "user://save.cfg"  # outfits unlocked with the old coins carry over
+
 var outfits := {}              # character id -> [{id, name, path, price}]
-var owned: Array = []
-var selected := {}             # character id -> outfit id she always wears ("" = her choice)
 
 
 func _init() -> void:
@@ -19,33 +17,25 @@ func _init() -> void:
 		for cid in parsed:
 			if parsed[cid] is Array and not parsed[cid].is_empty():
 				outfits[cid] = parsed[cid]
-	load_collection()
 
 
-func load_collection() -> void:
-	owned = []
-	selected = {}
-	var cfg := ConfigFile.new()
-	if cfg.load(path) == OK:
-		owned = cfg.get_value("wardrobe", "owned", [])
-		selected = cfg.get_value("wardrobe", "selected", {})
-	else:
-		var legacy := ConfigFile.new()
-		if legacy.load(legacy_path) == OK:
-			owned = legacy.get_value("progress", "unlocked", []).map(func(id): return str(id).replace("abg", "jessica"))
-	owned = owned.filter(func(id): return not outfit(id).is_empty())
-	for cid in outfits:
-		if not owned.has(outfits[cid][0].id):
-			owned.append(outfits[cid][0].id)  # first outfit is free
-		if not owned.has(selected.get(cid, "")):
+func _data() -> Dictionary:
+	var w: Dictionary = GameState.profile.wardrobe
+	for cid in outfits:  # first outfit is always free
+		if not w.owned.has(outfits[cid][0].id):
+			w.owned.append(outfits[cid][0].id)
+	return w
+
+
+## Drops outfits that aren't in the lineup any more (e.g. after data changes or from old saves).
+func clean(data: Dictionary) -> void:
+	data.owned = data.get("owned", []).map(func(id): return str(id).replace("abg", "jessica")).filter(
+		func(id): return not outfit(id).is_empty())
+	var selected: Dictionary = data.get("selected", {})
+	for cid in selected.keys():
+		if not data.owned.has(selected[cid]):
 			selected[cid] = ""
-
-
-func save_collection() -> void:
-	var cfg := ConfigFile.new()
-	cfg.set_value("wardrobe", "owned", owned)
-	cfg.set_value("wardrobe", "selected", selected)
-	cfg.save(path)
+	data.selected = selected
 
 
 func outfits_for(character_id: String) -> Array:
@@ -68,7 +58,11 @@ func _owner(id: String) -> String:
 
 
 func is_owned(id: String) -> bool:
-	return owned.has(id)
+	return _data().owned.has(id)
+
+
+func owned() -> Array:
+	return _data().owned
 
 
 func price(id: String) -> int:
@@ -79,33 +73,33 @@ func can_buy(id: String) -> bool:
 	return not outfit(id).is_empty() and not is_owned(id) and GameState.money >= price(id)
 
 
-## Buys with Story Mode money. The outfit is kept forever.
+## Buys with Story Mode money. The outfit is kept in this save slot's profile.
 func buy(id: String) -> bool:
 	if not can_buy(id):
 		return false
 	var cost := price(id)
 	GameState.money -= cost
-	owned.append(id)
-	save_collection()
+	_data().owned.append(id)
 	GameState.log_event("purchase", "Bought the %s outfit for $%d." % [outfit(id).name, cost])
 	EventBus.fire("money_changed", {"delta": -cost, "value": GameState.money, "reason": "wardrobe"})
+	SaveGame.save_after_profile_change()
 	return true
 
 
 ## She'll wear this everywhere until it's taken off.
 func wear(id: String) -> void:
 	if is_owned(id):
-		selected[_owner(id)] = id
-		save_collection()
+		_data().selected[_owner(id)] = id
+		SaveGame.save_after_profile_change()
 
 
 func take_off(character_id: String) -> void:
-	selected[character_id] = ""
-	save_collection()
+	_data().selected[character_id] = ""
+	SaveGame.save_after_profile_change()
 
 
 func worn(character_id: String) -> String:
-	return selected.get(character_id, "")
+	return _data().selected.get(character_id, "")
 
 
 ## Portrait for conversations: her worn outfit, else her first (default) outfit.

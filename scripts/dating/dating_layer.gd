@@ -10,6 +10,7 @@ const DebugPanel := preload("res://scripts/ui/debug_panel.gd")
 const JournalScreen := preload("res://scripts/ui/journal_screen.gd")
 const ShopScreen := preload("res://scripts/ui/shop_screen.gd")
 const WardrobeScreen := preload("res://scripts/ui/wardrobe_screen.gd")
+const SlotsScreen := preload("res://scripts/ui/slots_screen.gd")
 const ReactionBubble := preload("res://scripts/ui/reaction_bubble.gd")
 const AffectionMeter := preload("res://scripts/ui/affection_meter.gd")
 
@@ -20,6 +21,7 @@ var summary
 var journal
 var shop
 var wardrobe
+var slots
 var debug_panel
 var bubble
 var date_meter
@@ -56,6 +58,11 @@ func _init() -> void:
 	wardrobe.closed.connect(_on_wardrobe_closed)
 	screens.add_child(wardrobe)
 	calendar.wardrobe_pressed.connect(func(): wardrobe.open(true))
+	slots = SlotsScreen.new()
+	slots.continue_pressed.connect(continue_story)
+	slots.new_story_pressed.connect(start_story)
+	slots.back_pressed.connect(hide_all)
+	screens.add_child(slots)
 	calendar.journal_pressed.connect(func(): journal.open())
 	conversation.journal_pressed.connect(func(): journal.open(conversation.character_id))
 
@@ -81,13 +88,14 @@ func _init() -> void:
 
 
 func _ready() -> void:
-	EventBus.new_story_requested.connect(func(_info): start_story())
+	EventBus.story_menu_requested.connect(func(_info): _show_slots())
+	EventBus.new_story_requested.connect(func(info): start_story(info.get("slot", 0)))
 	EventBus.date_requested.connect(_on_date_requested)
 	EventBus.date_closed.connect(_on_date_closed)
 	EventBus.match_ended.connect(_on_match_ended)
 	EventBus.time_advanced.connect(_on_time_advanced)
 	EventBus.day_ended.connect(_on_day_ended)
-	EventBus.continue_story_requested.connect(func(_info): continue_story())
+	EventBus.continue_story_requested.connect(func(info): continue_story(info.get("slot", 0)))
 	EventBus.wardrobe_requested.connect(func(_info): _open_wardrobe_from_menu())
 	EventBus.money_changed.connect(func(_info):
 		if conversation.visible:
@@ -100,23 +108,38 @@ func hide_all() -> void:
 	journal.visible = false
 	shop.visible = false
 	wardrobe.visible = false
+	slots.visible = false
 	date_meter.visible = false
 	bubble.dismiss()
 
 
-func start_story() -> void:
-	Calendar.start_story()
+func _show_slots() -> void:
+	screens.visible = true
+	calendar.visible = false
+	conversation.visible = false
+	summary.visible = false
+	slots.open()
+
+
+## Starts a new story in save slot `slot` (0 = the active slot, or slot 1).
+func start_story(slot := 0) -> void:
+	if slot == 0:
+		slot = SaveGame.slot if SaveGame.slot != 0 else 1
+	slots.visible = false
+	SaveGame.new_story(slot)
 	var names: Array = Characters.ids().map(func(id): return Characters.profile(id).first_name())
 	calendar.show_message("%d days. %s are out there somewhere, but you can only be in one place at a time."
 		% [Calendar.days(), " and ".join(names)])
-	SaveGame.save_game()
 	_show_calendar()
 
 
-## Loads the saved story (or starts a new one if there is none).
-func continue_story() -> void:
-	if not SaveGame.load_game():
-		start_story()
+## Loads the story in save slot `slot` (0 = the active slot); starts one if it has none.
+func continue_story(slot := 0) -> void:
+	if slot == 0:
+		slot = SaveGame.slot if SaveGame.slot != 0 else 1
+	slots.visible = false
+	if not SaveGame.load_game(slot):
+		start_story(slot)
 		return
 	if Calendar.day_over:
 		_show_summary()
@@ -131,6 +154,7 @@ func _open_wardrobe_from_menu() -> void:
 	calendar.visible = false
 	conversation.visible = false
 	summary.visible = false
+	slots.visible = false
 	wardrobe.open(false)
 
 

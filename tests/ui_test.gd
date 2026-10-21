@@ -198,13 +198,19 @@ func _music_checks() -> void:
 func _menu_checks() -> void:
 	main._show_menu()
 	main._show_menu_page("main")
-	check(main.menu_pages.main.visible and not main.menu_pages.story.visible
-		and not main.menu_pages.quickplay.visible, "main page first")
+	check(main.menu_pages.main.visible and not main.menu_pages.quickplay.visible
+		and not main.menu_pages.has("story"), "main page first")
 	var labels := func(page): return page.find_children("*", "Button", true, false).map(func(b): return b.text)
 	check(labels.call(main.menu_pages.main).has("Story Mode") and labels.call(main.menu_pages.main).has("Quickplay"),
 		"main page has Story Mode and Quickplay")
-	check(labels.call(main.menu_pages.story).has("New Story") and labels.call(main.menu_pages.story).has("Continue Story"),
-		"Story Mode page")
+	var asked := []
+	var bus: Node = root.get_node("EventBus")
+	var on_story := func(_info): asked.append(true)
+	bus.story_menu_requested.connect(on_story)
+	main.menu_pages.main.find_children("*", "Button", true, false).filter(
+		func(b): return b.text == "Story Mode")[0].pressed.emit()
+	bus.story_menu_requested.disconnect(on_story)
+	check(asked.size() == 1, "Story Mode asks the dating layer for the save slots")
 	var quick: Array = labels.call(main.menu_pages.quickplay)
 	check(quick.any(func(t): return t.begins_with("4 Players")) and quick.any(func(t): return t.begins_with("2 Players")),
 		"Quickplay page has the 2- and 4-player games")

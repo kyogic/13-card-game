@@ -12,8 +12,9 @@ signal two_saved(info: Dictionary)       # player won a round still holding a de
 signal powerup_used(info: Dictionary)    # {by: "player"|"opponent", id, first: bool}
 
 # --- Navigation between the layers --------------------------------------------
-signal new_story_requested(info: Dictionary)
-signal continue_story_requested(info: Dictionary)  # load the saved story
+signal story_menu_requested(info: Dictionary)  # main menu "Story Mode": pick a save slot
+signal new_story_requested(info: Dictionary)   # {slot}; no slot = the active one (or 1)
+signal continue_story_requested(info: Dictionary)  # {slot}; no slot = the active one
 signal wardrobe_requested(info: Dictionary)  # main menu: browse/wear owned outfits
 signal date_requested(info: Dictionary)  # {character_id, location, opponent: {...}}
 signal date_closed(info: Dictionary)     # {completed: bool}

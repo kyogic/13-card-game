@@ -79,7 +79,7 @@ var bus: Node
 
 # --- UI ---------------------------------------------------------------------
 var menu: Control
-var menu_pages := {}           # "main" / "story" / "quickplay" -> VBoxContainer
+var menu_pages := {}           # "main" / "quickplay" -> VBoxContainer
 var table: Control
 var seats: Array = []          # per player: {box, name_label, backs, info_label}
 var pile_label: Label
@@ -150,7 +150,7 @@ func _build_menu() -> void:
 	# Main page: the two modes, the wardrobe, and settings shared by both modes.
 	var main_page := _menu_page(pages, "main")
 	main_page.add_child(_menu_button("Story Mode", "Date Jessica and Arisa over three days", 26,
-		_show_menu_page.bind("story")))
+		func(): if bus: bus.fire("story_menu_requested")))
 	main_page.add_child(_menu_button("Quickplay", "Jump straight into a card game", 26,
 		_show_menu_page.bind("quickplay")))
 	var row := HBoxContainer.new()
@@ -201,16 +201,6 @@ func _build_menu() -> void:
 	music_row.add_child(music_value_label)
 	main_page.add_child(music_row)
 	_apply_music_volume()
-
-	# Story Mode: the dating sim (handled by the dating layer through the EventBus).
-	var story_page := _menu_page(pages, "story")
-	story_page.add_child(_make_label("Story Mode", 30, Color(1, 0.85, 0.4)))
-	story_page.add_child(_make_label("Three days. Two girls. You can only be in one place at a time.", 17, IDLE_COLOR))
-	story_page.add_child(_menu_button("New Story", "Start over from Day 1", 24,
-		func(): if bus: bus.fire("new_story_requested")))
-	story_page.add_child(_menu_button("Continue Story", "Pick up from your last save", 24,
-		func(): if bus: bus.fire("continue_story_requested")))
-	story_page.add_child(_menu_button("Back", "", 20, _show_menu_page.bind("main")))
 
 	# Quickplay: straight into a card game.
 	var quick_page := _menu_page(pages, "quickplay")

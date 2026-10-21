@@ -1,6 +1,7 @@
 extends Node
-## State of the dating layer for the current story (several days). Plain data only, so
-## save/load can later be added with to_dict() / from_dict(). Not saved yet.
+## State of the dating layer: the current story (several days; to_dict/from_dict) and the
+## player profile it belongs to (journal and wardrobe; kept across stories in a save slot).
+## Plain data only; SaveGame writes both to the active slot.
 
 var day := 1
 var slot_index := 0
@@ -8,8 +9,8 @@ var time_left := 0
 var location := ""             # where the player is this slot ("" = choosing)
 var in_date := false           # a Tiến Lên date is being played
 ## character id -> {affection, unlocks, stages, trivia_answered (ids), talks_seen (exchange and
-## fact ids), soft_facts_seen, start_affection, start_unlocks, met, known_facts (trivia ids the
-## journal shows), gift_notes (gift id -> her reaction), order (pool -> ids shuffled once per story)}
+## fact ids), soft_facts_seen, start_affection, start_unlocks, met (this story),
+## order (pool -> ids shuffled once per story)}
 var characters := {}
 var inventory := {}            # gift id -> count
 var money := 0                 # story money ($), see Economy
@@ -18,6 +19,25 @@ var shop_stock: Array = []     # item ids for sale today
 var match_record := {"wins": 0, "losses": 0}  # whole story
 var day_log: Array = []        # [{kind, text}] for the end-of-day summary (cleared each morning)
 var settings := {"subtitles": true}
+## The player (one per save slot), kept across new stories:
+## {"journal": {character id -> {met, known_facts, gift_notes}},
+##  "wardrobe": {"owned": [outfit ids], "selected": {character id -> outfit id or ""}}}
+var profile := {}
+
+
+func _init() -> void:
+	reset_profile()
+
+
+func reset_profile() -> void:
+	profile = {"journal": {}, "wardrobe": {"owned": [], "selected": {}}}
+
+
+## What the journal knows about her: {met, known_facts (trivia ids), gift_notes (gift -> reaction)}.
+func journal_state(id: String) -> Dictionary:
+	if not profile.journal.has(id):
+		profile.journal[id] = {"met": false, "known_facts": [], "gift_notes": {}}
+	return profile.journal[id]
 
 
 func reset(starter_inventory: Dictionary = {}) -> void:
@@ -39,7 +59,7 @@ func char_state(id: String) -> Dictionary:
 	if not characters.has(id):
 		characters[id] = {"affection": 0, "unlocks": [], "stages": [], "trivia_answered": [],
 			"talks_seen": [], "soft_facts_seen": [], "start_affection": 0, "start_unlocks": [],
-			"story_start_affection": 0, "met": false, "known_facts": [], "gift_notes": {}, "order": {}}
+			"story_start_affection": 0, "met": false, "order": {}}
 	return characters[id]
 
 
