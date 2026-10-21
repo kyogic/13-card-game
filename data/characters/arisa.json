@@ -582,6 +582,12 @@
       },
       "Hi! I don't think we've met. I'm Arisa, ka. Nice to meet you."
     ],
+    "question_lead_in": [
+      "Okay, my turn to ask, na.",
+      "Wait wait. Question for you, ka.",
+      "Hmm. Let me see if you remember, na.",
+      "Okay, small test. Ready?"
+    ],
     "hello": [
       "Oh, hi again, ka!",
       "You came back! Hehe. Hello, na."

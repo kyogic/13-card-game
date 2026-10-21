@@ -15,18 +15,18 @@ A playable prototype of the Vietnamese card game **Tiến Lên** built with **Go
 The story lasts **3 days**, each with Morning, Afternoon, Evening and Night.
 - **Carried between days:** affection, unlocks and answered trivia.
 - **Money ($):**
-  - You earn it by talking (+$10), answering her quiz right (+$15) and going on dates (+$40 for a win, +$20 for a loss).
+  - You earn it by talking (+$10), answering her questions right (+$15) and going on dates (+$40 for a win, +$20 for a loss).
   - Spend it in the **Shop** (calendar). Each morning the shop stocks 6 random gifts, and shopping takes no time.
   - Prices are in `data/shop.json`; the earnings are under `economy` in `tuning.json`.
   - Money also buys outfits in the **Wardrobe** (see below).
 - **Journal** (calendar and conversations):
-  - A page per girl with every fact you've learned about her, from talk, soft facts and right quiz answers (e.g. "Boba order: Taro with lychee jelly", 9 of 26).
+  - A page per girl with every fact you've learned about her, from talk, soft facts and questions you answered right (e.g. "Boba order: Taro with lychee jelly", 9 of 26).
   - It also lists which gifts she loved, liked or disliked.
   - Labels come from each trivia id, or an optional `journal_label` on the question.
 - **After each day:** a summary of that day, with **Start Day N** and **Return to main menu** buttons. The summary never shows affection, so how each girl feels stays a mystery. The calendar also has a **Main menu** button. Both menu buttons save first.
-- **Every story is different:** each new story shuffles the order of each girl's small talk, facts and quiz questions. Within a story, the order is saved, and she still only brings up what her affection allows.
+- **Every story is different:** each new story shuffles the order of each girl's small talk, facts and questions. Within a story, the order is saved, and she still only brings up what her affection allows.
 - **First meetings:** the first conversation with each girl in a story is an introduction. After that she greets you with a "hello again" line (`first_meeting` and `hello` in her dialogue data).
-- **Wrong quiz answers:** she doesn't reveal the right answer. You learn it by talking to her.
+- **Wrong answers to her questions:** she doesn't reveal the right answer. You learn it by talking to her.
 - **During a date:** her speech bubble sits down by her feet, so it never covers her face.
 - **After Day 3:** the summary also shows totals for the whole story.
 
@@ -54,8 +54,11 @@ There are two girls to pursue: **Jessica** and **Arisa**. In every part of the d
 
 You have one day with four parts: Morning, Afternoon, Evening and Night. In each part, pick where to go.
 - **If Jessica is there,** you can:
-  - **Talk:** small talk that hints at her trivia answers. Your reply is good, neutral or bad.
-  - **Quiz me:** she asks one of her trivia questions.
+  - **Talk:** the whole conversation in one button. Each Talk is one of:
+    - something she's now ready to open up about (always first when there is one),
+    - small talk that hints at her trivia answers, where your reply is good, neutral or bad,
+    - or, about a third of the time, she turns it round and asks you a question about herself (her trivia). It starts with a lead-in line like "Wait, wait. Pop quiz." She never asks two in a row.
+  - The chance is `conversation.question_chance` in `tuning.json`. Lead-in lines are `question_lead_in` in her dialogue data.
   - **Give gift:** from your starting gifts.
   - **Ask on a date:** plays a best-of-3 Tiến Lên match against her. She reacts to card events in a speech bubble.
 - **If she isn't there,** you lose a little time.
@@ -100,10 +103,10 @@ Some places stay locked until her affection reaches a stage. When the day ends, 
 No code changes are needed; the tests load an extra character from data to check this.
 
 **Trivia and soft facts:**
-- Trivia questions can have a `min_affection`. Quiz me only asks the questions she's ready for. For Jessica, 18 of 26 are available at the start.
+- Trivia questions can have a `min_affection`. Talk only brings up the questions she's ready for. For Jessica, 18 of 26 are available at the start.
 - `soft_facts` are personal stories she shares once affection is high enough. When one is available, Talk plays it first.
 - After the small-talk exchanges run out, Talk moves on to the one-line `facts` in `data/talk/<id>.json`.
-- Every quiz answer is taught somewhere: in an exchange, a fact or a soft fact. A test checks this.
+- Every question's answer is taught somewhere: in an exchange, a fact or a soft fact. A test checks this.
 
 Dialogue lines can be a plain string or `{"text": ..., "translation": ...}`. The translation is shown as an English subtitle when the conversation screen's subtitles toggle is on.
 

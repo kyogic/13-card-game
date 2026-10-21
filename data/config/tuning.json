@@ -10,6 +10,9 @@
     "player_bomb": 2,
     "two_saved": 3
   },
+  "conversation": {
+    "question_chance": 0.35
+  },
   "time": {
     "units_per_slot": 3,
     "talk": 1,

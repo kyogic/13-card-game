@@ -51,6 +51,7 @@ func _run() -> void:
 	affection = root.get_node("Affection")
 	characters = root.get_node("Characters")
 	config = root.get_node("Config")
+	config.data.conversation.question_chance = 0.0  # Talk is small talk unless a check asks for a question
 	for e in ["affection_changed", "affection_stage_reached"]:
 		bus.connect(e, _record.bind(e))
 	await _affection_checks()
@@ -211,6 +212,23 @@ var layer: Node
 var convo: Node
 
 
+## How Talk mixes small talk and questions (decided without playing anything out).
+func _question_mix_checks() -> void:
+	var st: Dictionary = state.char_state("jessica")
+	config.data.conversation.question_chance = 0.35
+	var asks := 0
+	for i in 200:
+		st.erase("asked_last")
+		if convo._wants_to_ask():
+			asks += 1
+	check(asks > 30 and asks < 120, "she asks a question about a third of the time (%d/200)" % asks)
+	config.data.conversation.question_chance = 1.0
+	st["asked_last"] = true
+	check(not convo._wants_to_ask(), "never two questions in a row")
+	config.data.conversation.question_chance = 0.0
+	st.erase("asked_last")
+
+
 ## Clicks through whatever the dialogue box is showing.
 func _drain() -> void:
 	for i in 50:
@@ -218,6 +236,15 @@ func _drain() -> void:
 		if not convo.dialogue.is_busy():
 			return
 		convo.dialogue.advance()
+
+
+## Talk, with her asking a question this time; returns once the question is on screen.
+func _talk_question() -> void:
+	config.data.conversation.question_chance = 1.0
+	state.char_state(convo.character_id).erase("asked_last")
+	convo.buttons.talk.pressed.emit()
+	config.data.conversation.question_chance = 0.0
+	await _drain()
 
 
 func _choices() -> Array:
@@ -286,9 +313,10 @@ func _dialogue_checks() -> void:
 	convo.subtitles_toggle.button_pressed = true
 	await _drain()
 
-	# Quiz: pick the right answer -> +7 and recorded.
-	convo.buttons.quiz.pressed.emit()
-	await process_frame
+	# Talk sometimes turns into her asking a question: right answer -> +7 and recorded.
+	check(not convo.buttons.has("quiz") and convo.buttons.size() == 4, "one Talk button, no separate quiz")
+	await _talk_question()
+	check(state.time_left == 2, "the lead-in line costs nothing yet")
 	var question: String = db.text_label.text
 	var q: Dictionary = characters.profile("jessica").trivia().filter(func(t): return t.question == question)[0]
 	opts = _choices()
@@ -301,8 +329,9 @@ func _dialogue_checks() -> void:
 		"quiz correct +7 (recorded by id)")
 	check(q.get("min_affection", 0) <= 5, "only ungated questions at low affection")
 	await _drain()
-	check(state.time_left == 1, "quiz costs 1")
-	check(convo.buttons.talk.disabled == false and convo.buttons.quiz.disabled == false, "1 unit still affords talk")
+	check(state.time_left == 1, "a question costs 1, like any talk")
+	check(convo.buttons.talk.disabled == false, "1 unit still affords talk")
+	await _question_mix_checks()
 
 	# Gift from inventory -> loved +15, her matching line, inventory decremented.
 	convo.buttons.gift.pressed.emit()
@@ -657,9 +686,8 @@ func _two_girls_checks() -> void:
 	_choices()[0].pressed.emit()
 	await _drain()
 	check(affection.value("arisa") == 5 and affection.value("jessica") == 0, "affection is per girl")
-	# A wrong quiz answer doesn't give the right one away.
-	convo.buttons.quiz.pressed.emit()
-	await process_frame
+	# A wrong answer doesn't give the right one away.
+	await _talk_question()
 	var question: String = convo.dialogue.text_label.text
 	var q: Dictionary = ari.trivia().filter(func(t): return t.question == question)[0]
 	_choices().filter(func(b): return b.text != q.answer)[0].pressed.emit()
@@ -977,8 +1005,14 @@ func _second_character_checks() -> void:
 	check(cal.characters_at("pho_spot").has("mai"), "schedule entry places her")
 	convo.open("mai", "pho_spot", cal.location_name("pho_spot"))
 	await _drain()
-	check(convo.title_label.text.begins_with("Mai") and convo.buttons.talk.disabled
-		and not convo.buttons.quiz.disabled and not convo.buttons.date.disabled, "her conversation works")
+	check(convo.title_label.text.begins_with("Mai") and not convo.buttons.talk.disabled
+		and not convo.buttons.date.disabled, "her conversation works (Talk asks her trivia)")
+	convo.buttons.talk.pressed.emit()  # no small talk: her question comes up
+	await _drain()
+	check(convo.dialogue.text_label.text == "Favorite soup?" and _choices().size() == 3, "she asks her question")
+	_choices()[0].pressed.emit()
+	await _drain()
+	check(convo.buttons.talk.disabled and "nothing new" in convo.buttons.talk.text, "then Talk runs out")
 	bus.fire("gift_given", {"character_id": "mai", "gift_id": "pho_takeout", "category": "loved"})
 	check(affection.value("mai") == 12 and state.char_state("mai").unlocks.has("mai_secret"),
 		"her affection, stages and unlocks come from her JSON")

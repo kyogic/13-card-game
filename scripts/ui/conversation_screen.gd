@@ -1,6 +1,8 @@
 extends Control
-## HuniePop-style conversation with one character: Talk, Quiz me, Give gift,
-## Ask on a date, Leave. Content comes from the character JSON and data/talk/<id>.json.
+## HuniePop-style conversation with one character: Talk, Give gift, Ask on a date, Leave.
+## Talk is the whole conversation: small talk, things she opens up about, and now and then
+## a question about herself (her trivia). Content comes from the character JSON and
+## data/talk/<id>.json.
 ##
 ## Time is handled by whoever opens the screen: it sets `can_afford` and listens to
 ## `action_taken(kind)` ("talk", "quiz", "gift"). A date is requested on the EventBus.
@@ -74,8 +76,7 @@ func _init() -> void:
 	var actions := HBoxContainer.new()
 	actions.add_theme_constant_override("separation", 8)
 	col.add_child(actions)
-	for a in [["talk", "Talk"], ["quiz", "Quiz me"], ["gift", "Give gift"], ["date", "Ask on a date"],
-			["leave", "Leave"]]:
+	for a in [["talk", "Talk"], ["gift", "Give gift"], ["date", "Ask on a date"], ["leave", "Leave"]]:
 		var b := Button.new()
 		b.text = a[1]
 		b.add_theme_font_size_override("font_size", 18)
@@ -133,12 +134,10 @@ func set_status(text: String) -> void:
 func refresh() -> void:
 	if profile == null:
 		return
-	var talk_left := _next_talk() != null
-	var quiz_left := not _unanswered_trivia().is_empty()
+	var talk_left := _next_talk() != null or not _unanswered_trivia().is_empty()
 	var gifts_left := GameState.inventory.values().any(func(n): return n > 0)
 	var can_date: bool = profile.date_locations().has(location_id)
 	_set_button("talk", "Talk", talk_left, "nothing new")
-	_set_button("quiz", "Quiz me", quiz_left, "no questions left")
 	_set_button("gift", "Give gift", gifts_left, "no gifts")
 	_set_button("date", "Ask on a date", can_date, "not a date spot")
 	buttons.leave.disabled = busy
@@ -254,12 +253,20 @@ func _ordered(pool: String, items: Array) -> Array:
 	return sorted
 
 
+## Talk: what she's ready to open up about comes first; otherwise she sometimes turns it
+## round and asks you something about herself (never twice in a row), else small talk.
 func _on_talk() -> void:
 	var next = _next_talk()
-	if next == null:
+	var st: Dictionary = GameState.char_state(character_id)
+	var can_ask := not _unanswered_trivia().is_empty()
+	if next == null and not can_ask:
 		_say_event("on_talk_done")
 		return
-	var st: Dictionary = GameState.char_state(character_id)
+	if can_ask and (next == null or next.kind != "soft_fact" and _wants_to_ask()):
+		st["asked_last"] = true
+		_ask_question()
+		return
+	st["asked_last"] = false
 	if next.kind == "soft_fact":
 		var f: Dictionary = next.data
 		st.soft_facts_seen.append(f.id)
@@ -302,11 +309,26 @@ func _unanswered_trivia() -> Array:
 		func(q): return not st.trivia_answered.has(Character.trivia_id(q)))
 
 
-func _on_quiz() -> void:
+## Whether this Talk is her asking you a question (conversation.question_chance in tuning).
+func _wants_to_ask() -> bool:
+	if GameState.char_state(character_id).get("asked_last", false):
+		return false
+	return randf() < float(Config.value("conversation.question_chance", 0.35))
+
+
+## She asks one of her trivia questions, lead-in line first if she has one.
+func _ask_question() -> void:
 	var pool := _ordered("quiz", _unanswered_trivia())
 	if pool.is_empty():
 		return
 	var q: Dictionary = pool[0]  # next in this story's shuffled order (within her affection gate)
+	if profile.has_lines("question_lead_in"):
+		_say_event("question_lead_in", _show_question.bind(q))
+	else:
+		_show_question(q)
+
+
+func _show_question(q: Dictionary) -> void:
 	var options: Array = q.wrong.duplicate()
 	options.append(q.answer)
 	options.shuffle()

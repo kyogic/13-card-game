@@ -512,6 +512,12 @@
       "Uh... hi? You're kinda standing in my light. I'm Jess.",
       "New face. Okay. I'm Jessica. Jess, if you're lucky."
     ],
+    "question_lead_in": [
+      "Wait, wait. Pop quiz.",
+      "Okay, my turn. Let's see if you've been listening.",
+      "Hold on. Question for you.",
+      "Mmm, okay. Test time."
+    ],
     "hello": [
       "Oh, it's you again. Hey.",
       {
