@@ -394,8 +394,9 @@ func _two_girls_checks() -> void:
 	convo.buttons.date.pressed.emit()
 	await _drain()
 	await process_frame
-	check(main.opponent.id == "arisa" and main.date_outfit == ""
-		and main.portrait.texture.resource_path == ari.portrait(), "Arisa's date uses her portrait")
+	check(main.opponent.id == "arisa" and main.date_outfit.begins_with("arisa")
+		and main.portrait.texture.resource_path == main._outfit(main.date_outfit).path,
+		"Arisa wears one of her own unlocked outfits to the date")
 	check(main.opponent.tuning.get("two_hold_tendency") == 0.9, "her defensive card AI")
 
 	# Second Wind: she passed, the round is about to go to you, and she jumps back in.

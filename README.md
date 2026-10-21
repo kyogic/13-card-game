@@ -86,17 +86,23 @@ Her profile is `data/characters/arisa.json`, and her small talk is in `data/talk
 - **Signature power-up:** **Second Wind**, once per game. After she's passed and you think you've won the round, she jumps back in with a play that beats yours.
 - **Nickname:** she calls you "phi" once that's unlocked at Trusting (70).
 - **Subtitles:** her Thai phrases (mai pen rai, jing jing, chai yo, ...) have English subtitles.
-- **Art:** `assets/characters/arisa/default.png`, cut out from the original in `source/`. She has no wardrobe outfits yet, so dates use her portrait.
+- **Art:** `assets/characters/arisa/`. The outfits are Classic (free), Glam, Street, Muay Thai and School. Originals are in `source/`, named `arisa_<outfit>.png`.
 
 ### Jessica
 Her profile is `data/characters/jessica.json`.
 - **Card AI:** comes from `card_ai.tuning`: aggressive, spends her 2s early, loves straights.
 - **Signature power-up:** Lead Steal, once per game, after losing a round she thought she'd win.
 - **Schedule:** see the table above.
-- **Wardrobe:** 2-player matches from the main menu still earn coins for unlocking her outfits: Street, Pajamas, Maid and Lace (Classic is free). Those are saved separately in `user://save.cfg`.
+- **Wardrobe:** her outfits are Classic (free), Street, Pajamas, Maid and Lace.
+  - Coins come from 2-player matches on the main menu and are saved in `user://save.cfg`.
   - **On a date** she shows up in a random outfit you've unlocked, kept for the whole match.
   - **Quick 2-player matches** from the menu use the outfit selected in the Wardrobe.
   - Smile was removed from the lineup. A save that had unlocked it gets its coin back.
+
+### Wardrobe
+- All outfits are listed in `data/outfits.json`, one list per girl. Each girl's first outfit is free; the rest cost 1 coin.
+- The Wardrobe has a tab per girl, and each girl remembers her own selected outfit.
+- On a date, each girl wears a random outfit from the ones you've unlocked for her.
 
 ### Character art layout
 ```
@@ -108,7 +114,7 @@ assets/characters/jessica/
 To add an outfit:
 1. Put the original in `source/` as `jessica_<name>.png`.
 2. Make a trimmed copy at `jessica/<name>.png`.
-3. Add an entry to `OUTFITS` in `scripts/main.gd`.
+3. Add an entry under her id in `data/outfits.json`.
 
 ## Power-ups
 Each power-up can be switched on or off with a toggle on the main menu. In a game you can use each enabled power-up once, up to **2 power-ups in total**. They appear in the top-right panel. Power-ups are for you only; the CPUs don't use them.

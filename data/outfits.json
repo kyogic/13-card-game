@@ -1,0 +1,57 @@
+{
+  "_comment": "Wardrobe outfits per character. The first one is free; the rest cost coins. Ids must start with the character id.",
+  "jessica": [
+    {
+      "id": "jessica",
+      "name": "Classic",
+      "path": "res://assets/characters/jessica/default.png"
+    },
+    {
+      "id": "jessica_street",
+      "name": "Street",
+      "path": "res://assets/characters/jessica/street.png"
+    },
+    {
+      "id": "jessica_pajamas",
+      "name": "Pajamas",
+      "path": "res://assets/characters/jessica/pajamas.png"
+    },
+    {
+      "id": "jessica_maid",
+      "name": "Maid",
+      "path": "res://assets/characters/jessica/maid.png"
+    },
+    {
+      "id": "jessica_lace",
+      "name": "Lace",
+      "path": "res://assets/characters/jessica/lace.png"
+    }
+  ],
+  "arisa": [
+    {
+      "id": "arisa",
+      "name": "Classic",
+      "path": "res://assets/characters/arisa/default.png"
+    },
+    {
+      "id": "arisa_glam",
+      "name": "Glam",
+      "path": "res://assets/characters/arisa/glam.png"
+    },
+    {
+      "id": "arisa_street",
+      "name": "Street",
+      "path": "res://assets/characters/arisa/street.png"
+    },
+    {
+      "id": "arisa_muay_thai",
+      "name": "Muay Thai",
+      "path": "res://assets/characters/arisa/muay_thai.png"
+    },
+    {
+      "id": "arisa_school",
+      "name": "School",
+      "path": "res://assets/characters/arisa/school.png"
+    }
+  ]
+}

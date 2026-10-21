@@ -183,10 +183,14 @@ func _timer_unit_checks() -> void:
 
 
 func _match_and_wardrobe_checks() -> void:
-	check(main.coins == 0 and main.selected_outfit == "jessica", "fresh save defaults to Jessica")
-	check(main.OUTFITS.size() == 5 and not main.OUTFITS.any(func(o): return o.id == "jessica_smile"),
+	check(main.coins == 0 and main.selected_outfit_for("jessica") == "jessica"
+		and main.selected_outfit_for("arisa") == "arisa", "fresh save: each girl in her Classic outfit")
+	check(main.outfits.keys() == ["jessica", "arisa"] and main.outfits.arisa.size() == 5,
+		"outfits come from data/outfits.json")
+	check(main.unlocked.has("jessica") and main.unlocked.has("arisa"), "each girl's first outfit is free")
+	check(main.outfits.jessica.size() == 5 and not main.outfits.jessica.any(func(o): return o.id == "jessica_smile"),
 		"five outfits, no Smile")
-	for o in main.OUTFITS:
+	for o in main._all_outfits():
 		check(load(o.path) is Texture2D, "outfit image loads: %s" % o.path)
 	main._start_match()
 	check(main.names[1] == "Jessica" and main.portrait.visible and main.nameplate.visible, "Jessica shown in 2-player")
@@ -217,14 +221,16 @@ func _match_and_wardrobe_checks() -> void:
 	main._show_wardrobe()
 	check(not main.wardrobe_slots["jessica_maid"].button.disabled, "can afford unlock")
 	main._on_outfit_pressed("jessica_maid")
-	check(main.coins == 0 and main.unlocked.has("jessica_maid") and main.selected_outfit == "jessica_maid", "unlock")
+	check(main.coins == 0 and main.unlocked.has("jessica_maid") and main.selected_outfit_for("jessica") == "jessica_maid",
+		"unlock")
 	check(main.wardrobe_slots["jessica_lace"].button.disabled, "can't unlock without coins")
 	main._on_outfit_pressed("jessica_lace")
 	check(not main.unlocked.has("jessica_lace"), "no free unlocks")
 	var reloaded = load("res://scenes/main.tscn").instantiate()
 	reloaded.save_path = TEST_SAVE
 	root.add_child(reloaded)
-	check(reloaded.selected_outfit == "jessica_maid" and reloaded.unlocked.has("jessica_maid"), "progress saved")
+	check(reloaded.selected_outfit_for("jessica") == "jessica_maid" and reloaded.unlocked.has("jessica_maid"),
+		"progress saved")
 	reloaded.queue_free()
 	# Old saves used "abg" ids; they are migrated on load.
 	var old_cfg := ConfigFile.new()
@@ -235,7 +241,7 @@ func _match_and_wardrobe_checks() -> void:
 	var migrated = load("res://scenes/main.tscn").instantiate()
 	migrated.save_path = "user://test_old_save.cfg"
 	root.add_child(migrated)
-	check(migrated.unlocked == ["jessica", "jessica_maid"] and migrated.selected_outfit == "jessica_maid",
+	check(migrated.unlocked == ["jessica", "jessica_maid", "arisa"] and migrated.selected_outfit_for("jessica") == "jessica_maid",
 		"old abg save migrates")
 	migrated.queue_free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_old_save.cfg"))
@@ -248,8 +254,8 @@ func _match_and_wardrobe_checks() -> void:
 	var refunded = load("res://scenes/main.tscn").instantiate()
 	refunded.save_path = "user://test_smile_save.cfg"
 	root.add_child(refunded)
-	check(refunded.unlocked == ["jessica", "jessica_maid"] and refunded.coins == 0
-		and refunded.selected_outfit == "jessica", "old save: Smile dropped, coins reset to 0, outfits kept")
+	check(refunded.unlocked == ["jessica", "jessica_maid", "arisa"] and refunded.coins == 0
+		and refunded.selected_outfit_for("jessica") == "jessica", "old save: Smile dropped, coins reset to 0, outfits kept")
 	refunded.queue_free()
 	# The reset happens once: a save already on the new coin version keeps its coins.
 	var v2 := ConfigFile.new()
@@ -275,9 +281,28 @@ func _match_and_wardrobe_checks() -> void:
 	check(main.unlocked.has(main.date_outfit)
 		and main.portrait.texture.resource_path == main._outfit(main.date_outfit).path, "date shows her date outfit")
 	main.in_date = false
-	main.unlocked = ["jessica"]
+	# Arisa: her own lineup, her own selection, her own random date outfits.
+	main.unlocked.append("arisa")
+	var real_opponent: Dictionary = main.opponent
+	main.coins = 1
+	main._show_wardrobe()
+	main.wardrobe_tabs.get_child(1).pressed.emit()
+	check(main.wardrobe_character == "arisa" and main.wardrobe_slots.size() == 5
+		and main.wardrobe_slots.has("arisa_muay_thai") and main.wardrobe_title.text == "Arisa's Wardrobe",
+		"wardrobe tab shows Arisa's outfits")
+	main._on_outfit_pressed("arisa_muay_thai")
+	check(main.selected_outfit_for("arisa") == "arisa_muay_thai" and main.coins == 0
+		and main.selected_outfit_for("jessica") != "arisa_muay_thai", "Arisa's selection is separate")
+	main._set_opponent({"id": "arisa", "name": "Arisa", "portrait": "res://assets/characters/arisa/default.png"})
+	worn = {}
+	for i in 60:
+		worn[main.random_unlocked_outfit()] = true
+	check(worn.keys().all(func(id): return id.begins_with("arisa")) and worn.keys().size() == 2,
+		"Arisa's date outfits are hers and unlocked: %s" % [worn.keys()])
+	main._set_opponent(real_opponent)
+	main.unlocked = ["jessica", "arisa"]
 	main._on_outfit_pressed("jessica")
-	check(main.selected_outfit == "jessica", "re-select owned outfit for free")
+	check(main.selected_outfit_for("jessica") == "jessica", "re-select owned outfit for free")
 	main._show_menu()
 
 
