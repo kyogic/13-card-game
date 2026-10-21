@@ -4,6 +4,7 @@ extends SceneTree
 
 
 var failures := 0
+var checks := 0
 var bus: Node
 var state: Node
 var affection: Node
@@ -17,6 +18,7 @@ func _init() -> void:
 
 
 func check(cond: bool, msg: String) -> void:
+	checks += 1
 	if not cond:
 		failures += 1
 		print("FAIL: ", msg)
@@ -36,7 +38,7 @@ func _run() -> void:
 		bus.connect(e, _record.bind(e))
 	await _affection_checks()
 	await _dialogue_checks()
-	print("FAILURES: %d" % failures)
+	print("CHECKS: %d  FAILURES: %d" % [checks, failures])
 	quit(1 if failures > 0 else 0)
 
 
@@ -142,11 +144,21 @@ func _dialogue_checks() -> void:
 	layer = app.dating
 	convo = layer.conversation
 
+	cal = root.get_node("Calendar")
 	bus.fire("demo_day_requested")
 	await process_frame
-	check(layer.screens.visible and convo.visible, "demo day opens the conversation")
+	check(layer.screens.visible and layer.calendar.visible and not convo.visible, "demo day opens the calendar")
+	check(cal.slot_name() == "Morning" and state.time_left == 3, "morning, 3 time units")
 	check(state.inventory.get("taro_boba") == 1 and state.inventory.size() == 4, "starter inventory")
 	check(affection.value("jessica") == 0, "day starts at 0 affection")
+	check(cal.location_unlocked("pho_spot") and not cal.location_unlocked("boba_shop")
+		and not cal.location_unlocked("night_market") and not cal.location_unlocked("edm_festival"),
+		"only the phở spot is open at 0 affection")
+	check(layer.calendar.location_buttons.boba_shop.disabled
+		and "Curious (20)" in layer.calendar.location_buttons.boba_shop.text, "locked location explains why")
+	layer.calendar.location_buttons.pho_spot.pressed.emit()
+	await process_frame
+	check(convo.visible and convo.location_id == "pho_spot", "she's at the phở spot in the morning")
 
 	# Typewriter: the greeting starts hidden, a click reveals it, another click finishes.
 	var db = convo.dialogue
@@ -166,8 +178,10 @@ func _dialogue_checks() -> void:
 	opts[0].pressed.emit()
 	await process_frame
 	check(affection.value("jessica") == 5 and state.char_state("jessica").talks_seen == ["boba"], "talk good +5")
+	check(state.time_left == 3, "time is spent when the exchange finishes")
 	check("lychee" in db.text_label.text, "her reply reveals the trivia answer")
 	await _drain()
+	check(state.time_left == 2, "talk costs 1")
 
 	# Translation subtitle under Vietnamese lines, toggleable.
 	db.play([{"speaker": "Jessica", "text": "Trời ơi.", "translation": "Oh my god."}])
@@ -191,6 +205,8 @@ func _dialogue_checks() -> void:
 	check(affection.value("jessica") == 12 and state.char_state("jessica").trivia_answered == [question],
 		"quiz correct +7")
 	await _drain()
+	check(state.time_left == 1, "quiz costs 1")
+	check(convo.buttons.talk.disabled == false and convo.buttons.quiz.disabled == false, "1 unit still affords talk")
 
 	# Gift from inventory -> loved +15, her matching line, inventory decremented.
 	convo.buttons.gift.pressed.emit()
@@ -204,6 +220,7 @@ func _dialogue_checks() -> void:
 	check(affection.value("jessica") == 27 and state.inventory.taro_boba == 0, "loved gift +15")
 	check(db.text_label.text in characters.profile("jessica").data.dialogue.on_gift_loved, "gift reaction line")
 	await _drain()
+	check(state.time_left == 1, "gifts are free")
 
 	# Nickname: no "anh" until unlocked (Into it, 45).
 	check(not ("anh" in characters.profile("jessica").line("on_game_loss_player",
@@ -233,8 +250,48 @@ func _dialogue_checks() -> void:
 	check(affection.value("jessica") == 37 and state.match_record.wins == 1, "date match won +8, recorded")
 	main._on_again_pressed()
 	await process_frame
-	check(not state.in_date and layer.screens.visible and convo.visible, "back to the day after the date")
+	check(not state.in_date and layer.screens.visible and layer.calendar.visible and not convo.visible,
+		"back to the calendar after the date")
+	check(cal.slot_name() == "Afternoon" and state.time_left == 3, "the date used the rest of the morning")
+	await _calendar_checks()
+
+
+var cal: Node
+
+
+func _calendar_checks() -> void:
+	# 37 affection -> Curious: the boba shop is open, and that's where she is this afternoon.
+	check(cal.location_unlocked("boba_shop") and not layer.calendar.location_buttons.boba_shop.disabled,
+		"Curious unlocks the boba shop")
+	layer.calendar.location_buttons.pho_spot.pressed.emit()
+	await process_frame
+	check(layer.calendar.visible and "not here" in layer.calendar.message_label.text and state.time_left == 2,
+		"empty location: message and travel costs 1")
+	layer.calendar.location_buttons.boba_shop.pressed.emit()
+	await process_frame
+	check(convo.visible and convo.location_id == "boba_shop", "she's at the boba shop in the afternoon")
 	await _drain()
+	# Two talks use the last 2 units; the slot rolls over and the calendar comes back.
+	for i in 2:
+		convo.buttons.talk.pressed.emit()
+		await _drain()
+		_choices()[1].pressed.emit()
+		await _drain()
+	await process_frame
+	check(cal.slot_name() == "Evening" and layer.calendar.visible and "evening" in
+		layer.calendar.message_label.text, "running out of time moves to the evening")
+	check(not cal.location_unlocked("night_market"), "night market still locked at %d" % affection.value("jessica"))
+	# Waiting skips a slot; at night she's nowhere.
+	layer.calendar.wait_pressed.emit()
+	await process_frame
+	check(cal.slot_name() == "Night", "waiting moves to night")
+	for loc in ["pho_spot", "boba_shop"]:
+		check(cal.characters_at(loc).is_empty(), "nobody at %s at night" % loc)
+	var ended := []
+	bus.day_ended.connect(func(i): ended.append(i))
+	layer.calendar.wait_pressed.emit()
+	await process_frame
+	check(cal.day_over and ended.size() == 1, "after night the day ends")
 
 
 func Rules_analyze_quad() -> Dictionary:

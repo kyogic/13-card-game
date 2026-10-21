@@ -1,0 +1,16 @@
+{
+  "locations": {
+    "pho_spot": {"name": "Phở Spot", "requires": ""},
+    "boba_shop": {"name": "Boba Shop", "requires": "boba_date_location"},
+    "night_market": {"name": "Night Market", "requires": "night_market_date"},
+    "edm_festival": {"name": "EDM Festival", "requires": "festival_date"}
+  },
+  "characters": {
+    "jessica": {
+      "morning": "pho_spot",
+      "afternoon": "boba_shop",
+      "evening": "night_market",
+      "night": null
+    }
+  }
+}
