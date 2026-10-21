@@ -35,6 +35,7 @@ func _run() -> void:
 	for e in ["affection_changed", "affection_stage_reached"]:
 		bus.connect(e, _record.bind(e))
 	await _affection_checks()
+	await _dialogue_checks()
 	print("FAILURES: %d" % failures)
 	quit(1 if failures > 0 else 0)
 
@@ -108,3 +109,134 @@ func _affection_checks() -> void:
 	check(pops.size() == 1 and meter.bar.value == 79, "meter pop-up +7")
 	meter.queue_free()
 	check(state.to_dict().characters.jessica.affection == 79, "state serializes")
+
+
+# --- Dialogue / conversation / reactions ------------------------------------------
+
+var app: Node
+var main: Node
+var layer: Node
+var convo: Node
+
+
+## Clicks through whatever the dialogue box is showing.
+func _drain() -> void:
+	for i in 50:
+		await process_frame
+		if not convo.dialogue.is_busy():
+			return
+		convo.dialogue.advance()
+
+
+func _choices() -> Array:
+	return convo.choice_box.get_children().filter(func(c): return not c.is_queued_for_deletion())
+
+
+func _dialogue_checks() -> void:
+	app = load("res://scenes/app.tscn").instantiate()
+	root.add_child(app)
+	await process_frame
+	main = app.card_game
+	main.save_path = "user://test_dating_save.cfg"
+	main.CPU_DELAY = 60.0  # keep her from playing during scripted checks
+	layer = app.dating
+	convo = layer.conversation
+
+	bus.fire("demo_day_requested")
+	await process_frame
+	check(layer.screens.visible and convo.visible, "demo day opens the conversation")
+	check(state.inventory.get("taro_boba") == 1 and state.inventory.size() == 4, "starter inventory")
+	check(affection.value("jessica") == 0, "day starts at 0 affection")
+
+	# Typewriter: the greeting starts hidden, a click reveals it, another click finishes.
+	var db = convo.dialogue
+	check(db.is_busy() and db.typing and db.text_label.visible_characters < db.text_label.text.length(),
+		"typewriter is still revealing the line")
+	db.advance()
+	check(not db.typing and db.text_label.visible_characters == -1, "click completes the line")
+	check(db.speaker_label.text == "Jessica", "speaker name shown")
+	await _drain()
+	check(not db.is_busy() and not convo.busy, "greeting done")
+
+	# Talk: lines, then 3 choices; good choice +5 and the exchange is marked seen.
+	convo.buttons.talk.pressed.emit()
+	await _drain()
+	var opts := _choices()
+	check(opts.size() == 3, "talk shows 3 choices")
+	opts[0].pressed.emit()
+	await process_frame
+	check(affection.value("jessica") == 5 and state.char_state("jessica").talks_seen == ["boba"], "talk good +5")
+	check("lychee" in db.text_label.text, "her reply reveals the trivia answer")
+	await _drain()
+
+	# Translation subtitle under Vietnamese lines, toggleable.
+	db.play([{"speaker": "Jessica", "text": "Trời ơi.", "translation": "Oh my god."}])
+	check(db.subtitle_label.visible and "Oh my god" in db.subtitle_label.text, "subtitle shown")
+	convo.subtitles_toggle.button_pressed = false
+	check(not db.subtitle_label.visible and not state.settings.subtitles, "subtitles toggle off")
+	convo.subtitles_toggle.button_pressed = true
+	await _drain()
+
+	# Quiz: pick the right answer -> +7 and recorded.
+	convo.buttons.quiz.pressed.emit()
+	await process_frame
+	var question: String = db.text_label.text
+	var q: Dictionary = characters.profile("jessica").trivia().filter(func(t): return t.question == question)[0]
+	opts = _choices()
+	check(opts.size() == 4, "quiz shows 4 options")
+	for b in opts:
+		if b.text == q.answer:
+			b.pressed.emit()
+	await process_frame
+	check(affection.value("jessica") == 12 and state.char_state("jessica").trivia_answered == [question],
+		"quiz correct +7")
+	await _drain()
+
+	# Gift from inventory -> loved +15, her matching line, inventory decremented.
+	convo.buttons.gift.pressed.emit()
+	await process_frame
+	opts = _choices()
+	check(opts.size() == 5 and opts.back().text == "Never mind", "gift list from inventory")
+	for b in opts:
+		if b.text.begins_with("Taro Boba"):
+			b.pressed.emit()
+	await process_frame
+	check(affection.value("jessica") == 27 and state.inventory.taro_boba == 0, "loved gift +15")
+	check(db.text_label.text in characters.profile("jessica").data.dialogue.on_gift_loved, "gift reaction line")
+	await _drain()
+
+	# Nickname: no "anh" until unlocked (Into it, 45).
+	check(not ("anh" in characters.profile("jessica").line("on_game_loss_player",
+		state.char_state("jessica").unlocks)), "no 'anh' before it's unlocked")
+
+	# Ask on a date -> the card game starts a match; the dating screens step aside.
+	convo.buttons.date.pressed.emit()
+	await _drain()
+	await process_frame
+	check(main.in_date and main.table.visible and main.num_players == 2, "date starts Tiến Lên")
+	check(not layer.screens.visible and layer.date_meter.visible and state.in_date, "date HUD shown")
+	check(layer.bubble.visible and layer.bubble.last_text in
+		characters.profile("jessica").data.dialogue.greeting.map(func(g): return g if g is String else g.text),
+		"she greets you in the bubble")
+
+	# Card events during the date: bubble reactions + affection bonuses.
+	main._track_play(0, Rules_analyze_quad())
+	await process_frame
+	check(layer.bubble.last_text in characters.profile("jessica").data.dialogue.on_player_bomb, "bomb reaction")
+	check(affection.value("jessica") == 29, "player bomb +2 during date")
+
+	# Win the match -> +8, record, then back to the conversation.
+	main.match_wins = [1, 0]
+	main.finish_order = [0, 1]
+	main.hands[0] = []
+	main._end_game()
+	check(affection.value("jessica") == 37 and state.match_record.wins == 1, "date match won +8, recorded")
+	main._on_again_pressed()
+	await process_frame
+	check(not state.in_date and layer.screens.visible and convo.visible, "back to the day after the date")
+	await _drain()
+
+
+func Rules_analyze_quad() -> Dictionary:
+	var R = load("res://scripts/rules.gd")
+	return R.analyze([24, 25, 26, 27])

@@ -1,0 +1,87 @@
+{
+  "character": "jessica",
+  "exchanges": [
+    {
+      "id": "boba",
+      "teaches": "What's my go-to boba order?",
+      "lines": [
+        {"speaker": "jessica", "text": "Okay, important question. What's your boba order?"}
+      ],
+      "choices": [
+        {"text": "Taro, obviously.", "quality": "good",
+         "reply": [{"speaker": "jessica", "text": "Okay, taste. Mine's taro with lychee jelly. Don't forget it."}]},
+        {"text": "Whatever's on special.", "quality": "neutral",
+         "reply": [{"speaker": "jessica", "text": "Boring. It's taro with lychee jelly for me, by the way."}]},
+        {"text": "Boba's kinda overrated.", "quality": "bad",
+         "reply": [{"speaker": "jessica", "text": "Trời ơi. Taro with lychee jelly. Educate yourself.",
+                    "translation": "Oh my god. Taro with lychee jelly. Educate yourself."}]}
+      ]
+    },
+    {
+      "id": "butterflies",
+      "teaches": "What do my butterfly tattoos mean?",
+      "lines": [
+        {"speaker": "jessica", "text": "You keep looking at my butterflies."},
+        {"speaker": "jessica", "text": "Go ahead. Ask."}
+      ],
+      "choices": [
+        {"text": "What do they mean?", "quality": "good",
+         "reply": [{"speaker": "jessica", "text": "Change. I got them the year I moved out and started over."}]},
+        {"text": "They're cute.", "quality": "neutral",
+         "reply": [{"speaker": "jessica", "text": "Cute? They're about starting over. But okay, cute."}]},
+        {"text": "Did they hurt? Bet you cried.", "quality": "bad",
+         "reply": [{"speaker": "jessica", "text": "Wow. They're about starting over, actually. Rude."}]}
+      ]
+    },
+    {
+      "id": "tien_len",
+      "teaches": "Who taught me Tiến Lên?",
+      "lines": [
+        {"speaker": "jessica", "text": "You know who taught me Tiến Lên?"},
+        {"speaker": "jessica", "text": "My cô and chú. Every Tết, lì xì money on the table, everybody yelling.",
+         "translation": "My aunt and uncle. Every Lunar New Year, red-envelope money on the table, everybody yelling."}
+      ],
+      "choices": [
+        {"text": "So that's why you play so aggressive.", "quality": "good",
+         "reply": [{"speaker": "jessica", "text": "Exactly. At Tết, you play it safe, you go broke.",
+                    "translation": "Exactly. At Lunar New Year, you play it safe, you go broke."}]},
+        {"text": "Sounds loud.", "quality": "neutral",
+         "reply": [{"speaker": "jessica", "text": "So loud. Best nights of the year."}]},
+        {"text": "I learned from a YouTube video.", "quality": "bad",
+         "reply": [{"speaker": "jessica", "text": "...That explains a lot."}]}
+      ]
+    },
+    {
+      "id": "studio",
+      "teaches": "What's my dream?",
+      "lines": [
+        {"speaker": "jessica", "text": "Long day. Twelve clients."},
+        {"speaker": "jessica", "text": "Every set I do is a little more saved for my own studio."}
+      ],
+      "choices": [
+        {"text": "Your own lash studio? You'd crush that.", "quality": "good",
+         "reply": [{"speaker": "jessica", "text": "Right? Somewhere cute. My name on the door."}]},
+        {"text": "Do you like working for someone else?", "quality": "neutral",
+         "reply": [{"speaker": "jessica", "text": "It's fine. It's temporary. Opening my own lash studio is the dream."}]},
+        {"text": "Isn't that just, like, eyelashes?", "quality": "bad",
+         "reply": [{"speaker": "jessica", "text": "Just eyelashes? Watch me open a whole lash studio on 'just eyelashes.'"}]}
+      ]
+    },
+    {
+      "id": "bracelet",
+      "teaches": "Whose bracelet do I wear?",
+      "lines": [
+        {"speaker": "narrator", "text": "She keeps turning the little heart charm on her bracelet."},
+        {"speaker": "jessica", "text": "It was my bà ngoại's.", "translation": "It was my grandma's (my mom's mom)."}
+      ],
+      "choices": [
+        {"text": "She must have meant a lot to you.", "quality": "good",
+         "reply": [{"speaker": "jessica", "text": "...Yeah. She did. Okay, enough of that."}]},
+        {"text": "It's pretty.", "quality": "neutral",
+         "reply": [{"speaker": "jessica", "text": "It's the only thing of hers I've got. So, yeah."}]},
+        {"text": "Looks kinda cheap.", "quality": "bad",
+         "reply": [{"speaker": "jessica", "text": "Thôi đi. Don't.", "translation": "Stop it. Don't."}]}
+      ]
+    }
+  ]
+}

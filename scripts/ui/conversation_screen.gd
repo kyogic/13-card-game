@@ -1,0 +1,298 @@
+extends Control
+## HuniePop-style conversation with one character: Talk, Quiz me, Give gift,
+## Ask on a date, Leave. Content comes from the character JSON and data/talk/<id>.json.
+##
+## Time is handled by whoever opens the screen: it sets `can_afford` and listens to
+## `action_taken(kind)` ("talk", "quiz", "gift"). A date is requested on the EventBus.
+
+signal action_taken(kind: String)
+signal left
+
+const AffectionMeter := preload("res://scripts/ui/affection_meter.gd")
+const Character := preload("res://scripts/character.gd")
+const DialogueBox := preload("res://scripts/ui/dialogue_box.gd")
+
+var can_afford: Callable = func(_kind): return true
+var character_id := ""
+var location_id := ""
+var profile
+
+var portrait: TextureRect
+var title_label: Label
+var status_label: Label
+var meter
+var subtitles_toggle: CheckButton
+var buttons := {}              # action -> Button
+var choice_box: VBoxContainer
+var dialogue
+var busy := false
+
+
+func _init() -> void:
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var bg := ColorRect.new()
+	bg.color = Color(0.16, 0.09, 0.18)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(bg)
+
+	portrait = TextureRect.new()
+	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	portrait.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+	_offsets(portrait, 10, 470, 10, -10)
+	add_child(portrait)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 10)
+	col.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_offsets(col, 490, -24, 20, -220)
+	add_child(col)
+	var top := HBoxContainer.new()
+	title_label = Label.new()
+	title_label.add_theme_font_size_override("font_size", 30)
+	title_label.add_theme_color_override("font_color", Color(1, 0.85, 0.4))
+	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(title_label)
+	subtitles_toggle = CheckButton.new()
+	subtitles_toggle.text = "English subtitles"
+	subtitles_toggle.toggled.connect(_on_subtitles_toggled)
+	top.add_child(subtitles_toggle)
+	col.add_child(top)
+	status_label = Label.new()
+	status_label.add_theme_font_size_override("font_size", 17)
+	status_label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.95))
+	col.add_child(status_label)
+	meter = AffectionMeter.new()
+	col.add_child(meter)
+
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 8)
+	col.add_child(actions)
+	for a in [["talk", "Talk"], ["quiz", "Quiz me"], ["gift", "Give gift"], ["date", "Ask on a date"],
+			["leave", "Leave"]]:
+		var b := Button.new()
+		b.text = a[1]
+		b.add_theme_font_size_override("font_size", 18)
+		b.custom_minimum_size = Vector2(0, 40)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.pressed.connect(Callable(self, "_on_" + a[0]))
+		actions.add_child(b)
+		buttons[a[0]] = b
+	choice_box = VBoxContainer.new()
+	choice_box.add_theme_constant_override("separation", 6)
+	col.add_child(choice_box)
+
+	dialogue = DialogueBox.new()
+	dialogue.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	_offsets(dialogue, 490, -24, -205, -16)
+	add_child(dialogue)
+
+
+func _offsets(c: Control, l: float, r: float, t: float, b: float) -> void:
+	c.offset_left = l
+	c.offset_right = r
+	c.offset_top = t
+	c.offset_bottom = b
+
+
+## Opens the screen for `id` at `location`. `location_name` is just for display.
+func open(id: String, location: String, location_name: String) -> void:
+	character_id = id
+	location_id = location
+	profile = Characters.profile(id)
+	title_label.text = "%s  ·  %s" % [profile.first_name(), location_name]
+	portrait.texture = load(profile.portrait()) if profile.portrait() != "" else null
+	subtitles_toggle.set_pressed_no_signal(GameState.settings.get("subtitles", true))
+	meter.set_character(id)
+	_clear_choices()
+	visible = true
+	_say_event("greeting")
+
+
+func set_status(text: String) -> void:
+	status_label.text = text
+	refresh()
+
+
+func refresh() -> void:
+	if profile == null:
+		return
+	var talk_left := _next_talk() != null
+	var quiz_left := not _unanswered_trivia().is_empty()
+	var gifts_left := GameState.inventory.values().any(func(n): return n > 0)
+	var can_date: bool = profile.date_locations().has(location_id)
+	_set_button("talk", "Talk", talk_left, "nothing new")
+	_set_button("quiz", "Quiz me", quiz_left, "no questions left")
+	_set_button("gift", "Give gift", gifts_left, "no gifts")
+	_set_button("date", "Ask on a date", can_date, "not here")
+	buttons.leave.disabled = busy
+
+
+func _set_button(kind: String, text: String, available: bool, why_not: String) -> void:
+	var b: Button = buttons[kind]
+	var affordable: bool = kind == "date" or can_afford.call(kind)
+	b.disabled = busy or not available or not affordable
+	b.text = text if available and affordable else "%s (%s)" % [text, why_not if not available else "no time"]
+
+
+# --- Lines ------------------------------------------------------------------------
+
+## Converts talk-file / profile entries into dialogue-box lines with display names.
+func _lines(entries: Array) -> Array:
+	var unlocks: Array = GameState.char_state(character_id).unlocks
+	var out := []
+	for e in entries:
+		var line: Dictionary = profile.normalize(e, unlocks)
+		var speaker: String = e.get("speaker", character_id) if e is Dictionary else character_id
+		line["speaker"] = _speaker_name(speaker)
+		out.append(line)
+	return out
+
+
+func _speaker_name(speaker: String) -> String:
+	if speaker == "player":
+		return "You"
+	if speaker == "narrator" or speaker == "":
+		return ""
+	var p = Characters.profile(speaker)
+	return p.first_name() if p else speaker
+
+
+## Plays a random profile line for `event`, then calls `then`.
+func _say_event(event: String, then := Callable()) -> void:
+	var entry: Dictionary = profile.line_entry(event, GameState.char_state(character_id).unlocks)
+	if entry.is_empty():
+		if then.is_valid():
+			then.call()
+		return
+	entry["speaker"] = character_id
+	_play(_lines([entry]), then)
+
+
+func _narrate(text: String, then := Callable()) -> void:
+	_play([{"speaker": "", "text": text}], then)
+
+
+func _play(lines: Array, then := Callable()) -> void:
+	busy = true
+	refresh()
+	dialogue.play(lines)
+	await dialogue.finished
+	busy = false
+	refresh()
+	if then.is_valid():
+		then.call()
+
+
+func _clear_choices() -> void:
+	for c in choice_box.get_children():
+		c.queue_free()
+
+
+func _show_choices(options: Array, on_pick: Callable) -> void:
+	_clear_choices()
+	busy = true
+	refresh()
+	for i in options.size():
+		var b := Button.new()
+		b.text = options[i]
+		b.add_theme_font_size_override("font_size", 17)
+		b.pressed.connect(func():
+			_clear_choices()
+			busy = false
+			on_pick.call(i))
+		choice_box.add_child(b)
+
+
+# --- Actions ----------------------------------------------------------------------
+
+func _next_talk():
+	var seen: Array = GameState.char_state(character_id).talks_seen
+	for ex in Characters.talk(character_id):
+		if not seen.has(ex.id):
+			return ex
+	return null
+
+
+func _on_talk() -> void:
+	var ex = _next_talk()
+	if ex == null:
+		_say_event("on_talk_done")
+		return
+	_play(_lines(ex.lines), func():
+		dialogue.show_static(profile.first_name(), "...", "")
+		_show_choices(ex.choices.map(func(c): return c.text), func(i):
+			var choice: Dictionary = ex.choices[i]
+			GameState.char_state(character_id).talks_seen.append(ex.id)
+			EventBus.fire("talk_choice_made", {"character_id": character_id, "quality": choice.quality,
+				"exchange": ex.id})
+			_play(_lines(choice.reply), func(): action_taken.emit("talk"))))
+
+
+func _unanswered_trivia() -> Array:
+	var answered: Array = GameState.char_state(character_id).trivia_answered
+	return profile.trivia().filter(func(q): return not answered.has(q.question))
+
+
+func _on_quiz() -> void:
+	var pool := _unanswered_trivia()
+	if pool.is_empty():
+		return
+	var q: Dictionary = pool.pick_random()
+	var options: Array = q.wrong.duplicate()
+	options.append(q.answer)
+	options.shuffle()
+	dialogue.show_static(profile.first_name(), q.question)
+	_show_choices(options, func(i):
+		var correct: bool = options[i] == q.answer
+		GameState.char_state(character_id).trivia_answered.append(q.question)
+		EventBus.fire("trivia_answered", {"character_id": character_id, "question": q.question,
+			"correct": correct})
+		if correct:
+			_say_event("on_trivia_correct", func(): action_taken.emit("quiz"))
+		else:
+			_say_event("on_trivia_wrong", func():
+				_narrate("(The answer was: %s)" % q.answer, func(): action_taken.emit("quiz"))))
+
+
+func _on_gift() -> void:
+	var ids := GameState.inventory.keys().filter(func(g): return GameState.inventory[g] > 0)
+	var labels: Array = ids.map(func(g): return "%s  ×%d" % [Character.pretty(g), GameState.inventory[g]])
+	labels.append("Never mind")
+	dialogue.show_static("", "Which gift?")
+	_show_choices(labels, func(i):
+		if i >= ids.size():
+			dialogue.show_static("", "")
+			refresh()
+			return
+		give_gift(ids[i]))
+
+
+## Gives `gift_id` from the inventory and plays her reaction.
+func give_gift(gift_id: String) -> void:
+	GameState.inventory[gift_id] -= 1
+	var category: String = profile.gift_category(gift_id)
+	GameState.log_event("gift", "Gave %s a %s (%s)." % [profile.first_name(), Character.pretty(gift_id), category])
+	EventBus.fire("gift_given", {"character_id": character_id, "gift_id": gift_id, "category": category})
+	var done := func(): action_taken.emit("gift")
+	if profile.has_lines("on_gift_" + category):
+		_say_event("on_gift_" + category, done)
+	else:
+		_narrate("She takes the %s." % Character.pretty(gift_id).to_lower(), done)
+
+
+func _on_date() -> void:
+	_say_event("on_date_ask", func():
+		visible = false
+		EventBus.fire("date_requested", {"character_id": character_id, "location": location_id,
+			"opponent": profile.to_opponent()}))
+
+
+func _on_leave() -> void:
+	visible = false
+	left.emit()
+
+
+func _on_subtitles_toggled(on: bool) -> void:
+	GameState.settings.subtitles = on
+	dialogue.refresh_subtitle()

@@ -22,7 +22,22 @@
   },
   "reactions": {
     "bubble_seconds": 3.5,
-    "hand_line_chance": 0.5
+    "minor_line_chance": 0.5,
+    "minor_events": [
+      "hand_won",
+      "hand_lost"
+    ],
+    "lines": {
+      "match_started": "greeting",
+      "hand_won": "on_player_win_hand",
+      "hand_lost": "on_player_lose_hand",
+      "bomb_played:player": "on_player_bomb",
+      "two_saved": "on_player_saved_two",
+      "powerup_used:player": "on_powerup_used_by_player",
+      "powerup_used:opponent": "on_her_powerup",
+      "match_ended:player": "on_game_win_player",
+      "match_ended:opponent": "on_game_loss_player"
+    }
   },
   "ui": {
     "typewriter_chars_per_second": 45,
