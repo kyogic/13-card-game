@@ -10,7 +10,6 @@ signal journal_pressed
 signal shop_pressed
 signal wardrobe_pressed
 
-const AffectionMeter := preload("res://scripts/ui/affection_meter.gd")
 const Character := preload("res://scripts/character.gd")
 
 var title_label: Label
@@ -19,7 +18,6 @@ var message_label: Label
 var location_box: GridContainer
 var location_buttons := {}     # id -> Button
 var inventory_label: Label
-var meters: VBoxContainer
 
 
 func _init() -> void:
@@ -39,8 +37,6 @@ func _init() -> void:
 	col.add_child(title_label)
 	time_label = _label(20, Color(0.85, 0.85, 0.95))
 	col.add_child(time_label)
-	meters = VBoxContainer.new()
-	col.add_child(meters)
 	message_label = _label(18, Color(1, 0.75, 0.85))
 	message_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(message_label)
@@ -126,17 +122,6 @@ func refresh() -> void:
 		var reason: String = Calendar.lock_reason(id)
 		b.disabled = reason != ""
 		b.text = Calendar.location_name(id) + ("\n[locked: %s]" % reason if reason != "" else "")
-	if meters.get_child_count() != Characters.ids().size():
-		for m in meters.get_children():
-			meters.remove_child(m)
-			m.queue_free()
-		for cid in Characters.ids():
-			var m = AffectionMeter.new()
-			m.show_name = true
-			meters.add_child(m)
-			m.set_character(cid)
-	for m in meters.get_children():
-		m.refresh()
 	var items := []
 	for g in GameState.inventory:
 		if GameState.inventory[g] > 0:

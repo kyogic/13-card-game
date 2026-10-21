@@ -548,8 +548,9 @@ func _two_girls_checks() -> void:
 	# Morning: Jessica's at the phở spot, Arisa's at the gym. Meet Arisa.
 	bus.fire("new_story_requested")
 	await process_frame
-	check(layer.calendar.meters.get_child_count() == 2 and "Arisa" in layer.calendar.meters.get_child(0).label.text
-		+ layer.calendar.meters.get_child(1).label.text, "calendar shows a named meter per girl")
+	check(layer.calendar.find_children("*", "ProgressBar", true, false).is_empty()
+		and not layer.calendar.find_children("*", "Label", true, false).any(func(l): return "ffection" in l.text),
+		"the calendar doesn't show affection")
 	layer.calendar.location_buttons.muay_thai_gym.pressed.emit()
 	await _drain()
 	check(convo.character_id == "arisa" and convo.title_label.text.begins_with("Arisa"), "Arisa at the gym")
@@ -820,7 +821,6 @@ func _second_character_checks() -> void:
 	bus.fire("new_story_requested")
 	await process_frame
 	check(cal.characters_at("pho_spot").has("mai"), "schedule entry places her")
-	check(layer.calendar.meters.get_child_count() >= 1, "calendar meters")
 	convo.open("mai", "pho_spot", cal.location_name("pho_spot"))
 	await _drain()
 	check(convo.title_label.text.begins_with("Mai") and convo.buttons.talk.disabled
