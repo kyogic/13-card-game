@@ -73,14 +73,17 @@ func _timer_unit_checks() -> void:
 
 
 func _match_and_wardrobe_checks() -> void:
-	check(main.coins == 0 and main.selected_outfit == "abg", "fresh save defaults to ABG")
-	check(main.OUTFITS.size() == 6, "six ABG outfits")
+	check(main.coins == 0 and main.selected_outfit == "jessica", "fresh save defaults to Jessica")
+	check(main.OUTFITS.size() == 6, "six Jessica outfits")
 	for o in main.OUTFITS:
 		check(load(o.path) is Texture2D, "outfit image loads: %s" % o.path)
 	main._start_match()
-	check(main.names[1] == "ABG" and main.portrait.visible, "ABG sits across in 2-player")
+	check(main.names[1] == "Jessica" and main.portrait.visible and main.nameplate.visible, "Jessica shown in 2-player")
+	check(main.portrait.get_parent() != main.table, "Jessica stands outside the table frame")
+	check(main.table.get_global_rect().position.x >= main.portrait.get_global_rect().end.x,
+		"table frame is to the right of Jessica")
 
-	# You win game 1, ABG wins game 2, you win game 3 -> match won, +1 coin.
+	# You win game 1, Jessica wins game 2, you win game 3 -> match won, +1 coin.
 	main._record_match_result(0)
 	check(main.again_button.text == "Next Game" and not main._match_over(), "match continues after 1-0")
 	main._on_again_pressed()
@@ -101,19 +104,32 @@ func _match_and_wardrobe_checks() -> void:
 
 	# Spend the coin on an outfit; it becomes selected and is saved.
 	main._show_wardrobe()
-	check(not main.wardrobe_slots["abg_maid"].button.disabled, "can afford unlock")
-	main._on_outfit_pressed("abg_maid")
-	check(main.coins == 0 and main.unlocked.has("abg_maid") and main.selected_outfit == "abg_maid", "unlock")
-	check(main.wardrobe_slots["abg_smile"].button.disabled, "can't unlock without coins")
-	main._on_outfit_pressed("abg_smile")
-	check(not main.unlocked.has("abg_smile"), "no free unlocks")
+	check(not main.wardrobe_slots["jessica_maid"].button.disabled, "can afford unlock")
+	main._on_outfit_pressed("jessica_maid")
+	check(main.coins == 0 and main.unlocked.has("jessica_maid") and main.selected_outfit == "jessica_maid", "unlock")
+	check(main.wardrobe_slots["jessica_smile"].button.disabled, "can't unlock without coins")
+	main._on_outfit_pressed("jessica_smile")
+	check(not main.unlocked.has("jessica_smile"), "no free unlocks")
 	var reloaded = load("res://scenes/main.tscn").instantiate()
 	reloaded.save_path = TEST_SAVE
 	root.add_child(reloaded)
-	check(reloaded.selected_outfit == "abg_maid" and reloaded.unlocked.has("abg_maid"), "progress saved")
+	check(reloaded.selected_outfit == "jessica_maid" and reloaded.unlocked.has("jessica_maid"), "progress saved")
 	reloaded.queue_free()
-	main._on_outfit_pressed("abg")
-	check(main.selected_outfit == "abg", "re-select owned outfit for free")
+	# Old saves used "abg" ids; they are migrated on load.
+	var old_cfg := ConfigFile.new()
+	old_cfg.set_value("progress", "coins", 3)
+	old_cfg.set_value("progress", "unlocked", ["abg", "abg_maid"])
+	old_cfg.set_value("progress", "selected_outfit", "abg_maid")
+	old_cfg.save("user://test_old_save.cfg")
+	var migrated = load("res://scenes/main.tscn").instantiate()
+	migrated.save_path = "user://test_old_save.cfg"
+	root.add_child(migrated)
+	check(migrated.unlocked == ["jessica", "jessica_maid"] and migrated.selected_outfit == "jessica_maid",
+		"old abg save migrates")
+	migrated.queue_free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_old_save.cfg"))
+	main._on_outfit_pressed("jessica")
+	check(main.selected_outfit == "jessica", "re-select owned outfit for free")
 	main._show_menu()
 
 

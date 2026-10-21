@@ -7,22 +7,23 @@ A playable prototype of the Vietnamese card game **Tiến Lên** built with **Go
 - **2 Players:** you against 1 CPU, half the deck. 26 cards are dealt (13 each) and the rest stay out of play.
 
 ## 2-player matches, coins and the Wardrobe
-- In 2-player mode you play against **ABG**. She is shown full-length on the left side of the table, so her whole outfit is visible.
+- In 2-player mode you play against **Jessica**. The game sits in its own framed table on the right, and Jessica stands outside it on the left, full-length, so her whole outfit is visible. Her name is shown beneath her.
 - 2-player games are a **best-of-3 match**. Whoever won the previous game leads the next one with any play.
 - Winning a match earns **1 coin**.
-- In the **Wardrobe** (main menu), spend 1 coin to unlock each of ABG's other outfits: Smile, Street, Pajamas, Maid and Lace. Unlocked outfits can be switched between for free.
+- In **Jessica's Wardrobe** (main menu), Classic is free. Spend 1 coin to unlock each of her other outfits: Smile, Street, Pajamas, Maid and Lace. Unlocked outfits can be switched between for free.
 - Coins, unlocked outfits and the selected outfit are saved in `user://save.cfg`.
+- Saves from before she was named Jessica are migrated automatically.
 
 ### Character art layout
 ```
-assets/characters/abg/
+assets/characters/jessica/
   default.png smile.png street.png pajamas.png maid.png lace.png   <- game-ready (trimmed, 1000px tall)
   source/                                                          <- original uploads (ignored by Godot via .gdignore)
-    abg_default.png abg_smile.png abg_street.png ...
+    jessica_default.png jessica_smile.png jessica_street.png ...
 ```
 To add an outfit:
-1. Put the original in `source/` as `abg_<name>.png`.
-2. Make a trimmed copy at `abg/<name>.png`.
+1. Put the original in `source/` as `jessica_<name>.png`.
+2. Make a trimmed copy at `jessica/<name>.png`.
 3. Add an entry to `OUTFITS` in `scripts/main.gd`.
 
 ## Power-ups

@@ -14,16 +14,17 @@ const IDLE_COLOR := Color(0.9, 0.95, 0.9)
 const MAX_POWERUP_USES := 2
 ## 2-player opponent outfits. The first is the free default; the rest cost coins.
 const OUTFITS := [
-	{"id": "abg", "name": "ABG", "path": "res://assets/characters/abg/default.png"},
-	{"id": "abg_smile", "name": "ABG Smile", "path": "res://assets/characters/abg/smile.png"},
-	{"id": "abg_street", "name": "ABG Street", "path": "res://assets/characters/abg/street.png"},
-	{"id": "abg_pajamas", "name": "ABG Pajamas", "path": "res://assets/characters/abg/pajamas.png"},
-	{"id": "abg_maid", "name": "ABG Maid", "path": "res://assets/characters/abg/maid.png"},
-	{"id": "abg_lace", "name": "ABG Lace", "path": "res://assets/characters/abg/lace.png"},
+	{"id": "jessica", "name": "Classic", "path": "res://assets/characters/jessica/default.png"},
+	{"id": "jessica_smile", "name": "Smile", "path": "res://assets/characters/jessica/smile.png"},
+	{"id": "jessica_street", "name": "Street", "path": "res://assets/characters/jessica/street.png"},
+	{"id": "jessica_pajamas", "name": "Pajamas", "path": "res://assets/characters/jessica/pajamas.png"},
+	{"id": "jessica_maid", "name": "Maid", "path": "res://assets/characters/jessica/maid.png"},
+	{"id": "jessica_lace", "name": "Lace", "path": "res://assets/characters/jessica/lace.png"},
 ]
 const UNLOCK_COST := 1
 const MATCH_WINS_NEEDED := 2   # 2-player games are best of 3
-const OPPONENT_2P := "ABG"
+const OPPONENT_2P := "Jessica"
+const FRAME_2P_LEFT := 430      # 2-player: the table frame starts here; Jessica stands to its left
 ## key -> [button name, description]. Each power-up can be used once per game.
 const POWERUPS := {
 	"suit_up": ["Suit Up", "Turn one card into the Heart of the same rank (the highest suit)."],
@@ -62,8 +63,8 @@ var game_start_ms := 0
 # --- 2-player match + progression -------------------------------------------
 var save_path := "user://save.cfg"
 var coins := 0
-var unlocked: Array = ["abg"]
-var selected_outfit := "abg"
+var unlocked: Array = ["jessica"]
+var selected_outfit := "jessica"
 var match_wins := [0, 0]       # games won this match by [you, opponent]
 var match_game := 0            # which game of the match is being played
 var last_game_winner := -1     # leads the next game of the match
@@ -96,6 +97,8 @@ var wardrobe: Control
 var wardrobe_coins_label: Label
 var wardrobe_slots := {}       # outfit id -> {image, button}
 var portrait: TextureRect
+var nameplate: Label
+var table_frame: Panel
 var match_label: Label
 var again_button: Button
 
@@ -199,6 +202,20 @@ func _build_table() -> void:
 	table.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(table)
 
+	# The game is contained in its own framed "window" (felt with a wooden rim).
+	table_frame = Panel.new()
+	var felt := StyleBoxFlat.new()
+	felt.bg_color = Color(0.06, 0.42, 0.24)
+	felt.border_color = Color(0.42, 0.27, 0.12)
+	felt.set_border_width_all(6)
+	felt.set_corner_radius_all(16)
+	felt.shadow_color = Color(0, 0, 0, 0.45)
+	felt.shadow_size = 10
+	table_frame.add_theme_stylebox_override("panel", felt)
+	table_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	table_frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	table.add_child(table_frame)
+
 	# Centre pile.
 	var center := VBoxContainer.new()
 	pile_center = center
@@ -222,7 +239,9 @@ func _build_table() -> void:
 	var bottom := VBoxContainer.new()
 	bottom.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	bottom.offset_top = -230
-	bottom.offset_bottom = -8
+	bottom.offset_bottom = -14
+	bottom.offset_left = 16
+	bottom.offset_right = -16
 	bottom.add_theme_constant_override("separation", 8)
 	table.add_child(bottom)
 	status_label = _make_label("", 20, TURN_COLOR)
@@ -249,7 +268,6 @@ func _build_table() -> void:
 
 	# Event log (top-left) and menu button (top-right).
 	log_label = Label.new()
-	log_label.position = Vector2(12, 10)
 	log_label.add_theme_font_size_override("font_size", 14)
 	log_label.add_theme_color_override("font_color", Color(0.85, 0.92, 0.85))
 	table.add_child(log_label)
@@ -272,15 +290,21 @@ func _build_table() -> void:
 	_set_offsets(match_label, -330, -12, 50, 76)
 	table.add_child(match_label)
 
-	# 2-player opponent, shown full-length on the left so her whole outfit is visible.
+	# 2-player opponent: Jessica stands outside the table frame, full-length.
 	portrait = TextureRect.new()
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	portrait.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	_set_offsets(portrait, 10, 340, 4, 490)
-	table.add_child(portrait)
-	table.move_child(portrait, 0)
+	portrait.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+	_set_offsets(portrait, 0, FRAME_2P_LEFT - 10, 10, -50)
+	add_child(portrait)
+	move_child(portrait, table.get_index())
+	nameplate = _make_label(OPPONENT_2P, 30, Color(1, 0.85, 0.4))
+	nameplate.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_set_offsets(nameplate, 0, FRAME_2P_LEFT - 10, -52, -8)
+	add_child(nameplate)
+	portrait.visible = false
+	nameplate.visible = false
 
 	# Power-up panel (top-right, under the menu button).
 	var power_box := VBoxContainer.new()
@@ -358,8 +382,8 @@ func _build_seats() -> void:
 		match presets[p]:
 			Control.PRESET_CENTER_TOP:
 				if num_players == 2:
-					# Beside her portrait rather than on top of it.
-					_set_offsets(box, -290, -50, 20, 180)
+					# Top-left of the frame, clear of the timer and power-ups.
+					_set_offsets(box, -300, -60, 20, 180)
 				else:
 					_set_offsets(box, -200, 200, 10, 190)
 			Control.PRESET_CENTER_LEFT:
@@ -420,6 +444,8 @@ func _show_menu() -> void:
 	menu.visible = true
 	wardrobe.visible = false
 	table.visible = false
+	portrait.visible = false
+	nameplate.visible = false
 	overlay.visible = false
 	menu_coins_label.visible = true
 	menu_coins_label.text = "Coins: %d" % coins
@@ -1063,25 +1089,30 @@ func _outfit(id: String) -> Dictionary:
 
 ## Shows the selected outfit, full-length, in 2-player games.
 func _update_portrait() -> void:
-	portrait.visible = num_players == 2
+	portrait.visible = num_players == 2 and table.visible
+	nameplate.visible = portrait.visible
 	_refresh_match_label()
 	if portrait.visible:
 		portrait.texture = load(_outfit(selected_outfit).path)
 
 
-## 2-player games give the left side to ABG: the pile shifts right and the log
-## moves under the power-up panel.
+## Frames the table. In 2-player games the frame moves right to leave room for Jessica,
+## the pile shifts left of the power-ups and the log moves under them.
 func _apply_layout() -> void:
 	if num_players == 2:
-		_set_offsets(pile_center, -280, 380, -140, 40)
-		log_label.position = Vector2(1036, 290)
-		log_label.size = Vector2(240, 190)
+		# The whole table shrinks into a frame on the right; Jessica stands to its left.
+		_set_offsets(table, FRAME_2P_LEFT, -10, 10, -10)
+		_set_offsets(pile_center, -400, 150, -140, 40)
+		log_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		_set_offsets(log_label, -238, -14, 290, 470)
 		log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		log_label.add_theme_font_size_override("font_size", 13)
 	else:
+		_set_offsets(table, 8, -8, 8, -8)
 		_set_offsets(pile_center, -330, 330, -140, 40)
+		log_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		_set_offsets(log_label, 16, 600, 14, 200)
 		log_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-		log_label.position = Vector2(12, 10)
 		log_label.add_theme_font_size_override("font_size", 14)
 
 
@@ -1095,7 +1126,7 @@ func _build_wardrobe() -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 14)
 	center.add_child(box)
-	box.add_child(_make_label("Wardrobe", 44, Color(1, 0.9, 0.4)))
+	box.add_child(_make_label("%s's Wardrobe" % OPPONENT_2P, 44, Color(1, 0.9, 0.4)))
 	wardrobe_coins_label = _make_label("", 20, Color(1, 0.85, 0.2))
 	box.add_child(wardrobe_coins_label)
 	var row := HBoxContainer.new()
@@ -1163,10 +1194,13 @@ func _load_progress() -> void:
 	if cfg.load(save_path) != OK:
 		return
 	coins = cfg.get_value("progress", "coins", 0)
-	unlocked = cfg.get_value("progress", "unlocked", ["abg"])
-	selected_outfit = cfg.get_value("progress", "selected_outfit", "abg")
+	unlocked = cfg.get_value("progress", "unlocked", ["jessica"])
+	selected_outfit = cfg.get_value("progress", "selected_outfit", "jessica")
+	# Saves from before the character was named used "abg" ids.
+	unlocked = unlocked.map(func(id): return id.replace("abg", "jessica"))
+	selected_outfit = selected_outfit.replace("abg", "jessica")
 	if not unlocked.has(selected_outfit):
-		selected_outfit = "abg"
+		selected_outfit = "jessica"
 
 
 func _save_progress() -> void:
