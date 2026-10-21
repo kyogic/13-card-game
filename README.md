@@ -166,7 +166,7 @@ Suit Up, Lucky Draw and Wild Card can't be used on the card you're required to o
 | `scripts/card_view.gd` | Card drawn in code; clickable |
 | `scripts/main.gd` | Card game: menu, table UI, turn flow, matches, power-ups; emits card events |
 | `scripts/character.gd` | Reads a character profile JSON (dialogue, stages, gifts, trivia, AI tuning) |
-| `scripts/core/`, `scripts/dating/`, `scripts/ui/` | Dating layer (see Demo Day above) |
+| `scripts/core/`, `scripts/dating/`, `scripts/ui/` | Dating layer (see Story Mode above) |
 | `scripts/core/save_system.gd` | Save/load of the day (`SaveGame` autoload) |
 | `tests/dating_test.gd` | Dating layer: affection, dialogue, calendar, summary, debug panel, a second character, and a real date |
 | `tests/sim_test.gd` | Headless rule tests plus 300 CPU-only games |
