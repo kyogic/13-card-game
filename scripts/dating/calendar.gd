@@ -129,6 +129,11 @@ func location_name(id: String) -> String:
 	return schedule.get("locations", {}).get(id, {}).get("name", id.capitalize())
 
 
+## Scene backdrop for a location (res:// path), or "" if it has none.
+func location_background(id: String) -> String:
+	return schedule.get("locations", {}).get(id, {}).get("background", "")
+
+
 ## A location with a "requires" unlock opens once any character has recorded it.
 func location_unlocked(id: String) -> bool:
 	var needed: String = schedule.get("locations", {}).get(id, {}).get("requires", "")

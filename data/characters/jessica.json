@@ -583,5 +583,237 @@
   "nickname_for_player": {
     "word": "anh",
     "unlock": "nickname_anh"
+  },
+  "compatibility_questions": {
+    "ask_rules": {
+      "mode": "random",
+      "chance_per_talk": 0.25,
+      "max_per_day": 2,
+      "no_repeat": true,
+      "only_unlocked": true,
+      "note": "She occasionally slips one into a Talk action instead of normal small talk. Pick randomly from unasked questions whose min_affection she has reached. Shuffle options when shown."
+    },
+    "affection_values": {
+      "good": 6,
+      "neutral": 1,
+      "bad": -4
+    },
+    "questions": [
+      {
+        "id": "first_impression",
+        "question": "Be honest. What did you think when you first saw me?",
+        "options": [
+          {
+            "text": "You looked like trouble. I liked it.",
+            "fit": "good",
+            "reaction": "Ha! Correct answer."
+          },
+          {
+            "text": "You seemed kind of intimidating.",
+            "fit": "neutral",
+            "reaction": "Good. Keeps the weak ones away."
+          },
+          {
+            "text": "Honestly, you looked like every other girl at the club.",
+            "fit": "bad",
+            "reaction": "...Wow. Okay. Noted."
+          }
+        ]
+      },
+      {
+        "id": "tattoos",
+        "question": "Be real. Do my tattoos bother you?",
+        "options": [
+          {
+            "text": "Bother me? They suit you. Every one looks like it means something.",
+            "fit": "good",
+            "reaction": "...They do. Maybe I'll tell you sometime."
+          },
+          {
+            "text": "Nah, I don't really notice them.",
+            "fit": "neutral",
+            "reaction": "Hm. You should. I paid a lot for them."
+          },
+          {
+            "text": "I mean, you'll regret them when you're older.",
+            "fit": "bad",
+            "reaction": "Okay, Mom."
+          }
+        ]
+      },
+      {
+        "id": "loud",
+        "question": "My friends say I'm too much. Am I too much?",
+        "options": [
+          {
+            "text": "You're exactly enough. Anyone who can't keep up can leave.",
+            "fit": "good",
+            "reaction": "Okay, that was smooth. Annoyingly smooth."
+          },
+          {
+            "text": "Sometimes, but it's kind of fun.",
+            "fit": "neutral",
+            "reaction": "Kind of fun? I'm VERY fun."
+          },
+          {
+            "text": "Yeah, you could tone it down a little.",
+            "fit": "bad",
+            "reaction": "Tone it down? For who?"
+          }
+        ]
+      },
+      {
+        "id": "weekend",
+        "question": "Perfect Saturday night. Go.",
+        "options": [
+          {
+            "text": "Pregame, festival, phở at 2am.",
+            "fit": "good",
+            "reaction": "Okay, you get it. Who told you?"
+          },
+          {
+            "text": "Dinner and a couple drinks somewhere chill.",
+            "fit": "neutral",
+            "reaction": "Cute. A little safe, but cute."
+          },
+          {
+            "text": "Staying in, early bed. I'm not a night person.",
+            "fit": "bad",
+            "reaction": "...Are you eighty?"
+          }
+        ]
+      },
+      {
+        "id": "competitive",
+        "question": "If I beat you at Tiến Lên in front of your friends, how do you feel?",
+        "options": [
+          {
+            "text": "Proud. Then I demand a rematch.",
+            "fit": "good",
+            "reaction": "Yes! That's the energy."
+          },
+          {
+            "text": "Embarrassed, but whatever.",
+            "fit": "neutral",
+            "reaction": "Don't be. Everyone loses to me."
+          },
+          {
+            "text": "I'd let you win anyway so it doesn't matter.",
+            "fit": "bad",
+            "reaction": "Let me? LET me? Never say that again."
+          }
+        ]
+      },
+      {
+        "id": "lash_studio",
+        "question": "My studio dream. Is it dumb? My parents think it's dumb.",
+        "options": [
+          {
+            "text": "It's not dumb. You're already good at it. You just need the space.",
+            "fit": "good",
+            "reaction": "...Thanks. Seriously. Nobody says that."
+          },
+          {
+            "text": "It's risky, but you could make it work.",
+            "fit": "neutral",
+            "reaction": "Yeah. I know it's risky."
+          },
+          {
+            "text": "Maybe have a backup plan, just in case.",
+            "fit": "bad",
+            "reaction": "You sound exactly like my dad."
+          }
+        ],
+        "min_affection": 20
+      },
+      {
+        "id": "flaking",
+        "question": "Someone cancels on me last minute. Again. What do I do?",
+        "options": [
+          {
+            "text": "Cut them off. Your time matters.",
+            "fit": "good",
+            "reaction": "Right?! Finally someone gets it."
+          },
+          {
+            "text": "Give them one more chance.",
+            "fit": "neutral",
+            "reaction": "One. Maybe."
+          },
+          {
+            "text": "It's not a big deal. People get busy.",
+            "fit": "bad",
+            "reaction": "It IS a big deal. Don't do that to me."
+          }
+        ],
+        "min_affection": 20
+      },
+      {
+        "id": "soft_side",
+        "question": "If I cried in front of you, what would you do?",
+        "options": [
+          {
+            "text": "Nothing. Just sit with you. You don't have to explain.",
+            "fit": "good",
+            "reaction": "...Okay. You're kind of dangerous, you know that?"
+          },
+          {
+            "text": "Try to cheer you up. Get you boba.",
+            "fit": "neutral",
+            "reaction": "Boba helps. It's not wrong."
+          },
+          {
+            "text": "I'd be surprised. You don't seem like a crier.",
+            "fit": "bad",
+            "reaction": "Everyone's a crier, dummy. Some of us just hide it."
+          }
+        ],
+        "min_affection": 45
+      },
+      {
+        "id": "family",
+        "question": "Would you come to Tết with my family? They're LOUD. And they'll ask about your job.",
+        "options": [
+          {
+            "text": "I'm in. I'll bring oranges and lose to your chú at cards.",
+            "fit": "good",
+            "reaction": "Oh my god. They're going to love you."
+          },
+          {
+            "text": "Sure, if you want me there.",
+            "fit": "neutral",
+            "reaction": "I'm asking, aren't I?"
+          },
+          {
+            "text": "That sounds like a lot. Maybe next year?",
+            "fit": "bad",
+            "reaction": "...Right. Sure. Next year."
+          }
+        ],
+        "min_affection": 70
+      },
+      {
+        "id": "ballad",
+        "question": "If I sang for you, like actually sang, would you laugh?",
+        "options": [
+          {
+            "text": "Never. I'd want to hear every song you know.",
+            "fit": "good",
+            "reaction": "...Okay. Maybe. One day. Just you."
+          },
+          {
+            "text": "Only if it was a funny song.",
+            "fit": "neutral",
+            "reaction": "It's not a funny song."
+          },
+          {
+            "text": "Depends how bad you are.",
+            "fit": "bad",
+            "reaction": "Wow. Forget I asked."
+          }
+        ],
+        "min_affection": 70
+      }
+    ]
   }
 }

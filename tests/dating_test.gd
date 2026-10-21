@@ -52,6 +52,7 @@ func _run() -> void:
 	characters = root.get_node("Characters")
 	config = root.get_node("Config")
 	config.data.conversation.question_chance = 0.0  # Talk is small talk unless a check asks for a question
+	config.data.conversation.compatibility_chance = 0.0
 	for e in ["affection_changed", "affection_stage_reached"]:
 		bus.connect(e, _record.bind(e))
 	await _affection_checks()
@@ -271,7 +272,7 @@ func _dialogue_checks() -> void:
 	check(affection.value("jessica") == 0, "day starts at 0 affection")
 	var open: Array = cal.location_ids().filter(func(l): return cal.location_unlocked(l))
 	open.sort()
-	check(open == ["muay_thai_gym", "pho_spot", "seven_eleven"], "open at 0 affection: %s" % [open])
+	check(open == ["muay_thai_gym", "night_owl_mart", "pho_spot"], "open at 0 affection: %s" % [open])
 	check(layer.calendar.location_buttons.boba_shop.disabled
 		and "Curious (20)" in layer.calendar.location_buttons.boba_shop.text, "locked location explains why")
 	layer.calendar.location_buttons.pho_spot.pressed.emit()
@@ -443,8 +444,8 @@ func _calendar_checks() -> void:
 	layer.calendar.wait_pressed.emit()
 	await process_frame
 	check(cal.slot_name() == "Night", "waiting moves to night")
-	check(cal.characters_at("pho_spot") == ["jessica"] and cal.characters_at("seven_eleven") == ["arisa"]
-		and cal.characters_at("boba_shop").is_empty(), "night: Jessica at the phở spot, Arisa at 7-Eleven")
+	check(cal.characters_at("pho_spot") == ["jessica"] and cal.characters_at("night_owl_mart") == ["arisa"]
+		and cal.characters_at("boba_shop").is_empty(), "night: Jessica at the phở spot, Arisa at Night Owl Mart")
 	var ended := []
 	bus.day_ended.connect(func(i): ended.append(i))
 	layer.calendar.wait_pressed.emit()
@@ -470,6 +471,7 @@ func _calendar_checks() -> void:
 	await _real_date_check()
 	await _fact_line_check()
 	await _two_girls_checks()
+	await _compatibility_checks()
 	await _save_load_checks()
 	await _economy_checks()
 	await _wardrobe_checks()
@@ -586,6 +588,71 @@ func _legacy_checks() -> void:
 	saver.delete_slot(1)
 	saver.startup()
 	check(not saver.has_slot(1) and saver.slot == 0, "migration runs once")
+
+
+## Compatibility questions: she asks about you during Talk; the fit of your answer counts.
+func _compatibility_checks() -> void:
+	var jess = characters.profile("jessica")
+	check(jess.compatibility_questions().size() == 10 and characters.profile("arisa").compatibility_questions().size() == 10,
+		"both girls have compatibility questions")
+	bus.fire("new_story_requested")
+	await process_frame
+	check(cal.location_background("pho_spot") != "" and load(cal.location_background("pho_spot")) is Texture2D
+		and cal.location_background("muay_thai_gym") == "", "location backgrounds from schedule.json")
+	layer.calendar.location_buttons.pho_spot.pressed.emit()
+	await _drain()
+	check(convo.backdrop.texture != null and convo.backdrop.texture.resource_path.ends_with("pho_spot.webp"),
+		"the conversation shows the Phở Spot")
+	var money: int = state.money
+	config.data.conversation.compatibility_chance = 1.0
+	convo.buttons.talk.pressed.emit()
+	await _drain()
+	var question: String = convo.dialogue.text_label.text
+	var q: Array = jess.compatibility_questions().filter(func(x): return x.question == question)
+	check(q.size() == 1 and q[0].get("min_affection", 0) == 0 and _choices().size() == 3,
+		"Talk can turn into her asking about you: " + question)
+	var good: Dictionary = q[0].options.filter(func(o): return o.fit == "good")[0]
+	_choices().filter(func(b): return b.text == good.text)[0].pressed.emit()
+	await process_frame
+	check(convo.dialogue.text_label.text == good.reaction, "her reaction to your answer")
+	await _drain()
+	check(affection.value("jessica") == 6 and state.money == money + 10 and state.time_left == 2,
+		"a good fit: +6 affection, +$10, costs 1 time")
+	check(state.char_state("jessica").compat_answers.get(q[0].id, {}).get("fit") == "good", "answer recorded")
+	# Never two questions in a row, never the same question twice, at most 2 a day.
+	convo.buttons.talk.pressed.emit()
+	await _drain()
+	check(not jess.compatibility_questions().any(func(x): return x.question == convo.dialogue.text_label.text),
+		"no question right after a question")
+	if not _choices().is_empty():
+		_choices()[0].pressed.emit()
+	await _drain()
+	state.char_state("jessica").erase("asked_last")
+	state.time_left = 3
+	convo.buttons.talk.pressed.emit()
+	await _drain()
+	var second: String = convo.dialogue.text_label.text
+	var q2: Dictionary = jess.compatibility_questions().filter(func(x): return x.question == second)[0]
+	check(second != question, "a different question")
+	var bad: Dictionary = q2.options.filter(func(o): return o.fit == "bad")[0]
+	var before: int = affection.value("jessica")
+	_choices().filter(func(b): return b.text == bad.text)[0].pressed.emit()
+	await _drain()
+	check(affection.value("jessica") == before - 4, "a bad fit: -4")
+	check(convo._compat_available().is_empty(), "two a day at most")
+	state.day += 1
+	check(convo._compat_available().size() == 3, "more tomorrow (unasked, ungated: %d)" % convo._compat_available().size())
+	state.day -= 1
+	config.data.conversation.compatibility_chance = 0.0
+	state.char_state("jessica").erase("asked_last")
+	convo._on_leave()
+	layer.hide_all()
+	# Old saves: the store and its toastie were renamed.
+	state.from_dict({"location": "seven_eleven", "inventory": {"7_eleven_toastie": 2},
+		"shop_stock": ["7_eleven_toastie", "taro_boba"]})
+	check(state.location == "night_owl_mart" and state.inventory == {"night_owl_toastie": 2}
+		and state.shop_stock == ["night_owl_toastie", "taro_boba"], "renamed ids in old saves")
+	state.reset()
 
 
 ## Story money and the shop.

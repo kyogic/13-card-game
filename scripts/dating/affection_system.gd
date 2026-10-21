@@ -10,6 +10,11 @@ func _ready() -> void:
 	EventBus.two_saved.connect(_on_two_saved)
 	EventBus.talk_choice_made.connect(_on_talk_choice)
 	EventBus.trivia_answered.connect(_on_trivia_answered)
+	EventBus.compatibility_answered.connect(func(info):
+		var profile = Characters.profile(info.character_id)
+		if profile:
+			add(info.character_id, profile.compatibility_affection(info.fit,
+				Config.int_value("affection.compatibility_" + info.fit)), "compatibility"))
 	EventBus.gift_given.connect(_on_gift_given)
 
 

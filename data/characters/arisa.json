@@ -34,7 +34,7 @@
     "mango sticky rice",
     "Thai milk tea",
     "lakorn dramas",
-    "7-Eleven toasties at 3am",
+    "Night Owl Mart toasties at 3am",
     "Muay Thai",
     "quiet mornings",
     "people who are patient"
@@ -56,7 +56,7 @@
       "thai_milk_tea",
       "lakorn_box_set",
       "compression_socks",
-      "7_eleven_toastie"
+      "night_owl_toastie"
     ],
     "disliked": [
       "extra_spicy_som_tam",
@@ -93,7 +93,7 @@
     "pet": "None, but she feeds every stray cat near her apartment",
     "favorite_holiday": "Songkran",
     "favorite_show": "Old lakorn dramas",
-    "late_night_snack": "7-Eleven ham and cheese toastie",
+    "late_night_snack": "Night Owl Mart ham and cheese toastie",
     "lucky_number": 9,
     "biggest_fear": "Hospitals when she's the patient",
     "hidden_talent": "Muay Thai, with a real amateur fight record",
@@ -208,7 +208,7 @@
     {
       "id": "late_night_snack",
       "question": "What's my 3am snack after a shift?",
-      "answer": "A 7-Eleven toastie",
+      "answer": "A Night Owl Mart toastie",
       "wrong": [
         "Instant noodles",
         "Mango sticky rice",
@@ -603,5 +603,238 @@
   "nickname_for_player": {
     "word": "phi",
     "unlock": "nickname_phi"
+  },
+  "compatibility_questions": {
+    "ask_rules": {
+      "mode": "random",
+      "chance_per_talk": 0.25,
+      "max_per_day": 2,
+      "no_repeat": true,
+      "only_unlocked": true,
+      "note": "She occasionally slips one into a Talk action instead of normal small talk. Pick randomly from unasked questions whose min_affection she has reached. Shuffle options when shown."
+    },
+    "affection_values": {
+      "good": 6,
+      "neutral": 1,
+      "bad": -4
+    },
+    "questions": [
+      {
+        "id": "first_impression",
+        "question": "What did you think of me when we first met, ka?",
+        "options": [
+          {
+            "text": "Sweet. But I had a feeling there was more going on.",
+            "fit": "good",
+            "reaction": "Oh? Hehe... you notice things, na."
+          },
+          {
+            "text": "That you're really nice and polite.",
+            "fit": "neutral",
+            "reaction": "Thank you, ka! That's what everyone says."
+          },
+          {
+            "text": "That you seemed kind of fragile.",
+            "fit": "bad",
+            "reaction": "...Fragile. Okay. Mai pen rai."
+          }
+        ]
+      },
+      {
+        "id": "rush",
+        "question": "Do you like to plan everything, or go fast and figure it out?",
+        "options": [
+          {
+            "text": "Slow down and do it right. No point rushing.",
+            "fit": "good",
+            "reaction": "Yes! Patient people are rare, phi."
+          },
+          {
+            "text": "A bit of both, depends on the day.",
+            "fit": "neutral",
+            "reaction": "Hmm. That's fair, ka."
+          },
+          {
+            "text": "Go fast. Waiting is boring.",
+            "fit": "bad",
+            "reaction": "Oh... okay. You'd hate night shift."
+          }
+        ]
+      },
+      {
+        "id": "strong_girl",
+        "question": "Do you like girls who are strong? Like, actually strong?",
+        "options": [
+          {
+            "text": "Definitely. Strong is attractive.",
+            "fit": "good",
+            "reaction": "Hehe. Good answer. Very good answer, na."
+          },
+          {
+            "text": "Sure, I don't mind.",
+            "fit": "neutral",
+            "reaction": "You 'don't mind'? Okay, ka."
+          },
+          {
+            "text": "I like girls who need someone to take care of them.",
+            "fit": "bad",
+            "reaction": "Oh. Then I'm not your type, phi."
+          }
+        ]
+      },
+      {
+        "id": "spicy",
+        "question": "Be honest, do you judge people who can't eat spicy food?",
+        "options": [
+          {
+            "text": "Not at all. Eat what you like.",
+            "fit": "good",
+            "reaction": "Oh, thank god. I mean... thank you, ka."
+          },
+          {
+            "text": "A little. It's funny.",
+            "fit": "neutral",
+            "reaction": "Hmm. Funny for you, maybe."
+          },
+          {
+            "text": "Yeah. If you can't handle spice, what are you doing?",
+            "fit": "bad",
+            "reaction": "...Ha. Ha. Okay."
+          }
+        ]
+      },
+      {
+        "id": "tired",
+        "question": "I'm always tired after my shift. Does that bother you?",
+        "options": [
+          {
+            "text": "No. Come over, sleep. I'll make breakfast.",
+            "fit": "good",
+            "reaction": "You'd do that? ...Jing jing?"
+          },
+          {
+            "text": "It's fine, we'll just hang out when you're awake.",
+            "fit": "neutral",
+            "reaction": "That's nice, ka."
+          },
+          {
+            "text": "Kind of. I want someone who can go out.",
+            "fit": "bad",
+            "reaction": "Sorry, na. I'm saving lives, not clubbing."
+          }
+        ],
+        "min_affection": 20
+      },
+      {
+        "id": "muay_thai",
+        "question": "If I took you to my Muay Thai gym, what would you do?",
+        "options": [
+          {
+            "text": "Train with you. Just go easy on me.",
+            "fit": "good",
+            "reaction": "Hehe. No promises, phi."
+          },
+          {
+            "text": "Watch from the side and cheer.",
+            "fit": "neutral",
+            "reaction": "Chai yo from the side is okay too."
+          },
+          {
+            "text": "Probably try to talk you out of fighting.",
+            "fit": "bad",
+            "reaction": "...Please don't. Everyone tries that."
+          }
+        ],
+        "min_affection": 45
+      },
+      {
+        "id": "smile",
+        "question": "If I'm smiling but I'm sad, would you notice?",
+        "options": [
+          {
+            "text": "I'd notice. And I'd ask, even if you said mai pen rai.",
+            "fit": "good",
+            "reaction": "...You're the first one who would."
+          },
+          {
+            "text": "I'd try to. You're hard to read.",
+            "fit": "neutral",
+            "reaction": "Hehe. Yes. That's on purpose."
+          },
+          {
+            "text": "How would I know? You'd tell me, right?",
+            "fit": "bad",
+            "reaction": "...Right. Of course I would."
+          }
+        ],
+        "min_affection": 45
+      },
+      {
+        "id": "money_home",
+        "question": "Half my money goes home. Is that a problem for you?",
+        "options": [
+          {
+            "text": "It's not a problem. It's one of the best things about you.",
+            "fit": "good",
+            "reaction": "...Okay. Now I need a minute, na."
+          },
+          {
+            "text": "That's a lot, but it's your choice.",
+            "fit": "neutral",
+            "reaction": "Yes. It's my choice, ka."
+          },
+          {
+            "text": "Shouldn't you save for yourself first?",
+            "fit": "bad",
+            "reaction": "My family IS for myself, phi."
+          }
+        ],
+        "min_affection": 70
+      },
+      {
+        "id": "poems",
+        "question": "If I let you read one poem, what would you do?",
+        "options": [
+          {
+            "text": "Read it slowly. Then ask you to read it to me in Thai.",
+            "fit": "good",
+            "reaction": "...Okay. Maybe one. Only one, na."
+          },
+          {
+            "text": "Tell you it's beautiful.",
+            "fit": "neutral",
+            "reaction": "You'd say that even if it's bad, hehe."
+          },
+          {
+            "text": "Run it through a translator.",
+            "fit": "bad",
+            "reaction": "No! That's cheating! Forget it."
+          }
+        ],
+        "min_affection": 70
+      },
+      {
+        "id": "fight_night",
+        "question": "If I had a real fight, would you come? Even if I get hurt?",
+        "options": [
+          {
+            "text": "Front row. And I'd wrap your hands after.",
+            "fit": "good",
+            "reaction": "...That's the best thing anyone's said to me."
+          },
+          {
+            "text": "I'd come, but I might look away.",
+            "fit": "neutral",
+            "reaction": "Mai pen rai. Just be there."
+          },
+          {
+            "text": "I don't think I could watch that.",
+            "fit": "bad",
+            "reaction": "...Okay. I understand, ka."
+          }
+        ],
+        "min_affection": 90
+      }
+    ]
   }
 }

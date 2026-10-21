@@ -1,7 +1,7 @@
 extends Control
 ## HuniePop-style conversation with one character: Talk, Give gift, Ask on a date, Leave.
 ## Talk is the whole conversation: small talk, things she opens up about, and now and then
-## a question about herself (her trivia). Content comes from the character JSON and
+## a question: about herself (her trivia), or about you (her compatibility questions). Content comes from the character JSON and
 ## data/talk/<id>.json.
 ##
 ## Time is handled by whoever opens the screen: it sets `can_afford` and listens to
@@ -20,6 +20,7 @@ var character_id := ""
 var location_id := ""
 var profile
 
+var backdrop: TextureRect       # the location's scene, if it has one
 var portrait: TextureRect
 var title_label: Label
 var status_label: Label
@@ -37,6 +38,17 @@ func _init() -> void:
 	bg.color = Color(0.16, 0.09, 0.18)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
+	backdrop = TextureRect.new()
+	backdrop.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	backdrop.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(backdrop)
+	var scrim := ColorRect.new()  # keeps the text readable over the scene
+	scrim.color = Color(0.06, 0.03, 0.08, 0.75)
+	scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_offsets(scrim, 476, -10, 10, -226)
+	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(scrim)
 
 	portrait = TextureRect.new()
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -109,6 +121,8 @@ func open(id: String, location: String, location_name: String) -> void:
 	location_id = location
 	profile = Characters.profile(id)
 	title_label.text = "%s  ·  %s" % [profile.first_name(), location_name]
+	var scene: String = Calendar.location_background(location)
+	backdrop.texture = load(scene) if scene != "" and ResourceLoader.exists(scene) else null
 	var look: String = Wardrobe.look_path(id)
 	portrait.texture = load(look) if look != "" else null
 	subtitles_toggle.set_pressed_no_signal(GameState.settings.get("subtitles", true))
@@ -134,7 +148,8 @@ func set_status(text: String) -> void:
 func refresh() -> void:
 	if profile == null:
 		return
-	var talk_left := _next_talk() != null or not _unanswered_trivia().is_empty()
+	var talk_left := _next_talk() != null or not _unanswered_trivia().is_empty() \
+		or not _compat_available().is_empty()
 	var gifts_left := GameState.inventory.values().any(func(n): return n > 0)
 	var can_date: bool = profile.date_locations().has(location_id)
 	_set_button("talk", "Talk", talk_left, "nothing new")
@@ -253,19 +268,27 @@ func _ordered(pool: String, items: Array) -> Array:
 	return sorted
 
 
-## Talk: what she's ready to open up about comes first; otherwise she sometimes turns it
-## round and asks you something about herself (never twice in a row), else small talk.
+## Talk: what she's ready to open up about comes first. Otherwise she sometimes asks you
+## something (never two questions in a row): about you (compatibility) or about herself
+## (trivia). Else small talk.
 func _on_talk() -> void:
 	var next = _next_talk()
 	var st: Dictionary = GameState.char_state(character_id)
+	var compat := _compat_available()
 	var can_ask := not _unanswered_trivia().is_empty()
-	if next == null and not can_ask:
+	if next == null and not can_ask and compat.is_empty():
 		_say_event("on_talk_done")
 		return
-	if can_ask and (next == null or next.kind != "soft_fact" and _wants_to_ask()):
-		st["asked_last"] = true
-		_ask_question()
-		return
+	if next == null or next.kind != "soft_fact":
+		# With no small talk left, a question is all there is.
+		if not compat.is_empty() and (next == null and not can_ask or _wants_compat()):
+			st["asked_last"] = true
+			_ask_compat(compat[0])
+			return
+		if can_ask and (next == null or _wants_to_ask()):
+			st["asked_last"] = true
+			_ask_question()
+			return
 	st["asked_last"] = false
 	if next.kind == "soft_fact":
 		var f: Dictionary = next.data
@@ -307,6 +330,51 @@ func _unanswered_trivia() -> Array:
 	var st: Dictionary = GameState.char_state(character_id)
 	return profile.trivia_available(st.affection).filter(
 		func(q): return not st.trivia_answered.has(Character.trivia_id(q)))
+
+
+## Compatibility questions she can ask now: not asked yet in this story, within her affection
+## gate, and under her max_per_day. In this story's shuffled order.
+func _compat_available() -> Array:
+	if profile == null:
+		return []
+	var st: Dictionary = GameState.char_state(character_id)
+	var answers: Dictionary = st.get("compat_answers", {})
+	var today := answers.values().filter(func(a): return int(a.get("day", 0)) == GameState.day).size()
+	if today >= int(profile.compatibility_rule("max_per_day", 2)):
+		return []
+	var open: Array = profile.compatibility_questions().filter(func(q):
+		return not answers.has(q.id) and st.affection >= q.get("min_affection", 0))
+	return _ordered("compat", open)
+
+
+## Whether this Talk is her asking about you: her chance_per_talk, unless tuning overrides it
+## (conversation.compatibility_chance). Never right after another question.
+func _wants_compat() -> bool:
+	if GameState.char_state(character_id).get("asked_last", false):
+		return false
+	var chance = Config.value("conversation.compatibility_chance", null)
+	if chance == null:
+		chance = profile.compatibility_rule("chance_per_talk", 0.25)
+	return randf() < float(chance)
+
+
+## She asks about you; your answer fits her (good), sort of (neutral) or doesn't (bad).
+func _ask_compat(q: Dictionary) -> void:
+	var options: Array = q.options.duplicate()
+	options.shuffle()
+	dialogue.show_static(profile.first_name(), q.question)
+	_show_choices(options.map(func(o): return o.text), func(i):
+		var pick: Dictionary = options[i]
+		var st: Dictionary = GameState.char_state(character_id)
+		if not st.has("compat_answers"):
+			st["compat_answers"] = {}
+		st.compat_answers[q.id] = {"fit": pick.fit, "day": GameState.day}
+		GameState.log_event("compatibility", "%s asked \"%s\" (%s answer)." % [profile.first_name(),
+			q.question, pick.fit])
+		EventBus.fire("compatibility_answered", {"character_id": character_id, "question": q.id,
+			"fit": pick.fit})
+		var reply := {"speaker": character_id, "text": pick.reaction}
+		_play(_lines([reply]), func(): action_taken.emit("talk")))
 
 
 ## Whether this Talk is her asking you a question (conversation.question_chance in tuning).
@@ -379,7 +447,7 @@ func _on_date() -> void:
 		var opponent: Dictionary = profile.to_opponent()
 		opponent["portrait"] = Wardrobe.match_path(character_id)  # her outfit for this date
 		EventBus.fire("date_requested", {"character_id": character_id, "location": location_id,
-			"opponent": opponent}))
+			"opponent": opponent, "background": Calendar.location_background(location_id)}))
 
 
 func _on_leave() -> void:

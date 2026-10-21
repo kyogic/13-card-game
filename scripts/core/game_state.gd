@@ -59,7 +59,7 @@ func char_state(id: String) -> Dictionary:
 	if not characters.has(id):
 		characters[id] = {"affection": 0, "unlocks": [], "stages": [], "trivia_answered": [],
 			"talks_seen": [], "soft_facts_seen": [], "start_affection": 0, "start_unlocks": [],
-			"story_start_affection": 0, "met": false, "order": {}}
+			"story_start_affection": 0, "met": false, "order": {}, "compat_answers": {}}
 	return characters[id]
 
 
@@ -75,13 +75,17 @@ func to_dict() -> Dictionary:
 		"settings": settings.duplicate()}
 
 
+## Ids renamed since older saves were written (old -> new).
+const RENAMED := {"seven_eleven": "night_owl_mart", "7_eleven_toastie": "night_owl_toastie"}
+
+
 ## Restores from to_dict() output. JSON turns every number into a float, so whole
 ## numbers are converted back to ints here.
 func from_dict(d: Dictionary) -> void:
 	day = int(d.get("day", 1))
 	slot_index = int(d.get("slot_index", 0))
 	time_left = int(d.get("time_left", 0))
-	location = d.get("location", "")
+	location = RENAMED.get(d.get("location", ""), d.get("location", ""))
 	in_date = false
 	characters = {}
 	for id in d.get("characters", {}):
@@ -92,10 +96,10 @@ func from_dict(d: Dictionary) -> void:
 			st[key] = int(st[key])
 	inventory = {}
 	for g in d.get("inventory", {}):
-		inventory[g] = int(d.inventory[g])
+		inventory[RENAMED.get(g, g)] = int(d.inventory[g])
 	money = int(d.get("money", 0))
 	day_start_money = int(d.get("day_start_money", money))
-	shop_stock = d.get("shop_stock", []).duplicate()
+	shop_stock = d.get("shop_stock", []).map(func(g): return RENAMED.get(g, g))
 	var record: Dictionary = d.get("match_record", {})
 	match_record = {"wins": int(record.get("wins", 0)), "losses": int(record.get("losses", 0))}
 	day_log = d.get("day_log", []).duplicate(true)

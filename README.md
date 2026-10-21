@@ -30,6 +30,8 @@ The story lasts **3 days**, each with Morning, Afternoon, Evening and Night.
 - **During a date:** her speech bubble sits down by her feet, so it never covers her face.
 - **After Day 3:** the summary also shows totals for the whole story.
 
+**Scenes:** locations can have a `background` in `data/schedule.json`. It shows behind the conversation, and dimmed behind the card table on a date there. The Phở Spot, Boba Shop and Thai Tea Shop have one (`assets/backgrounds/`).
+
 There are two girls to pursue: **Jessica** and **Arisa**. In every part of the day they're in different places, so going to see one means missing the other:
 
 | Slot | Jessica | Arisa |
@@ -37,7 +39,7 @@ There are two girls to pursue: **Jessica** and **Arisa**. In every part of the d
 | Morning | Phở Spot | Muay Thai Gym |
 | Afternoon | Boba Shop (Jessica: Curious, 20) | Thai Tea Shop (Arisa: Friendly, 20) |
 | Evening | Night Market (Jessica: Catching feelings, 70) | Breakfast Café (Arisa: Trusting, 70), her "breakfast" before a night shift |
-| Night | Phở Spot (late-night run) | 7-Eleven (her 3am break; not a date spot) |
+| Night | Phở Spot (late-night run) | Night Owl Mart, a 24-hour corner store (her 3am break; not a date spot) |
 
 **Saving:**
 - **3 save slots**, one per player (`user://save_slot_1.json` to `_3.json`). Each slot shows its day, **time played**, outfits, journal entries and when it was last saved.
@@ -59,6 +61,7 @@ You have one day with four parts: Morning, Afternoon, Evening and Night. In each
     - small talk that hints at her trivia answers, where your reply is good, neutral or bad,
     - or, about a third of the time, she turns it round and asks you a question about herself (her trivia). It starts with a lead-in line like "Wait, wait. Pop quiz." She never asks two in a row.
   - The chance is `conversation.question_chance` in `tuning.json`. Lead-in lines are `question_lead_in` in her dialogue data.
+  - She also asks **about you** (her `compatibility_questions`): three answers that fit her (good), sort of (neutral) or don't (bad). Good is +6 affection and +$10, neutral +1, bad -4. Each girl's `ask_rules` set the chance per Talk (25%) and the limit (2 a day). She never repeats one in a story, and only asks those her affection has unlocked. Her reaction plays after your answer.
   - **Give gift:** from your starting gifts.
   - **Ask on a date:** plays a best-of-3 Tiến Lên match against her. She reacts to card events in a speech bubble.
 - **If she isn't there,** you lose a little time.

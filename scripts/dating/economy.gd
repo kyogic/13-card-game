@@ -14,6 +14,9 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	EventBus.compatibility_answered.connect(func(i):
+		if i.fit == "good":
+			earn(Config.int_value("economy.compatibility_good"), "compatibility"))
 	EventBus.fact_learned.connect(func(i):
 		if i.get("source") == "talk":
 			earn(Config.int_value("economy.talk"), "talk"))

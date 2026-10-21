@@ -8,7 +8,7 @@ extends RefCounted
 
 ## Display names for ids whose plain-English capitalisation would lose the Vietnamese.
 const DISPLAY_NAMES := {"ca_phe_sua_da": "Cà phê sữa đá", "pho_takeout": "Phở takeout",
-	"7_eleven_toastie": "7-Eleven toastie"}
+	"night_owl_toastie": "Night Owl toastie"}
 
 var data: Dictionary = {}
 
@@ -151,6 +151,21 @@ func trivia_available(affection: int) -> Array:
 ## Personal things she only shares past an affection threshold: [{id, min_affection, reveal}].
 func soft_facts() -> Array:
 	return data.get("soft_facts", [])
+
+
+## Compatibility questions: she asks about you; your answer fits her or doesn't.
+## {ask_rules: {chance_per_talk, max_per_day, ...}, affection_values: {good, neutral, bad}, questions: [...]}
+func compatibility_questions() -> Array:
+	return data.get("compatibility_questions", {}).get("questions", [])
+
+
+func compatibility_rule(key: String, default):
+	return data.get("compatibility_questions", {}).get("ask_rules", {}).get(key, default)
+
+
+## Her affection change for an answer of this fit, or `default` if her data doesn't say.
+func compatibility_affection(fit: String, default: int) -> int:
+	return int(data.get("compatibility_questions", {}).get("affection_values", {}).get(fit, default))
 
 
 func date_locations() -> Array:

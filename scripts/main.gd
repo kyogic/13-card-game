@@ -110,6 +110,7 @@ var overlay_menu_button: Button
 var table_frame: Panel
 var match_label: Label
 var again_button: Button
+var date_backdrop: TextureRect
 
 
 func _ready() -> void:
@@ -120,6 +121,12 @@ func _ready() -> void:
 	bg.color = Color(0.05, 0.36, 0.2)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
+	date_backdrop = TextureRect.new()  # the date's location, dimmed behind the table
+	date_backdrop.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	date_backdrop.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	date_backdrop.modulate = Color(0.55, 0.55, 0.6)
+	date_backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(date_backdrop)
 	_set_opponent(Character.load_profile(DEFAULT_OPPONENT_PATH).to_opponent())
 	bus = get_node_or_null("/root/EventBus")
 	if bus:
@@ -1238,6 +1245,8 @@ func _set_opponent(info: Dictionary) -> void:
 ## The dating layer asks for a date: play a best-of-3 match against that character.
 func _on_date_requested(info: Dictionary) -> void:
 	_set_opponent(info.opponent)
+	var scene: String = info.get("background", "")
+	date_backdrop.texture = load(scene) if scene != "" and ResourceLoader.exists(scene) else null
 	in_date = true
 	_start_match()
 
@@ -1245,6 +1254,7 @@ func _on_date_requested(info: Dictionary) -> void:
 ## Ends a date and hands control back to the dating layer.
 func _finish_date(completed: bool) -> void:
 	in_date = false
+	date_backdrop.texture = null
 	_show_menu()
 	if bus:
 		bus.fire("date_closed", {"completed": completed})

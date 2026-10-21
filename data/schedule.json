@@ -2,22 +2,25 @@
   "locations": {
     "pho_spot": {
       "name": "Phở Spot",
+      "background": "res://assets/backgrounds/pho_spot.webp",
       "requires": ""
     },
     "muay_thai_gym": {
       "name": "Muay Thai Gym",
       "requires": ""
     },
-    "seven_eleven": {
-      "name": "7-Eleven",
+    "night_owl_mart": {
+      "name": "Night Owl Mart",
       "requires": ""
     },
     "boba_shop": {
       "name": "Boba Shop",
+      "background": "res://assets/backgrounds/boba_shop.webp",
       "requires": "boba_date_location"
     },
     "thai_tea_shop": {
       "name": "Thai Tea Shop",
+      "background": "res://assets/backgrounds/thai_tea_shop.webp",
       "requires": "thai_tea_date_location"
     },
     "night_market": {
@@ -44,8 +47,8 @@
       "morning": "muay_thai_gym",
       "afternoon": "thai_tea_shop",
       "evening": "breakfast_cafe",
-      "night": "seven_eleven"
+      "night": "night_owl_mart"
     }
   },
-  "notes": "Each slot puts the girls in different places, so visiting one means missing the other. Arisa works nights: her 'breakfast' is in the evening before her shift, and she's at 7-Eleven on her 3am break."
+  "notes": "Each slot puts the girls in different places, so visiting one means missing the other. Arisa works nights: her 'breakfast' is in the evening before her shift, and she's at Night Owl Mart on her 3am break."
 }

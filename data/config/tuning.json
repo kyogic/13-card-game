@@ -8,7 +8,10 @@
     "match_won": 8,
     "match_lost": 3,
     "player_bomb": 2,
-    "two_saved": 3
+    "two_saved": 3,
+    "compatibility_good": 6,
+    "compatibility_neutral": 1,
+    "compatibility_bad": -4
   },
   "conversation": {
     "question_chance": 0.35
@@ -50,6 +53,7 @@
     "start_money": 30,
     "talk": 10,
     "trivia_correct": 15,
+    "compatibility_good": 10,
     "date_won": 40,
     "date_lost": 20
   }

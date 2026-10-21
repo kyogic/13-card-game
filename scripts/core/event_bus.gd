@@ -16,12 +16,13 @@ signal story_menu_requested(info: Dictionary)  # main menu "Story Mode": pick a 
 signal new_story_requested(info: Dictionary)   # {slot}; no slot = the active one (or 1)
 signal continue_story_requested(info: Dictionary)  # {slot}; no slot = the active one
 signal wardrobe_requested(info: Dictionary)  # main menu: browse/wear owned outfits
-signal date_requested(info: Dictionary)  # {character_id, location, opponent: {...}}
+signal date_requested(info: Dictionary)  # {character_id, location, opponent: {...}, background: path or ""}
 signal date_closed(info: Dictionary)     # {completed: bool}
 
 # --- Dating layer -------------------------------------------------------------
 signal talk_choice_made(info: Dictionary)   # {character_id, quality}
 signal trivia_answered(info: Dictionary)    # {character_id, question, correct}
+signal compatibility_answered(info: Dictionary)  # {character_id, question, fit: "good"|"neutral"|"bad"}
 signal gift_given(info: Dictionary)         # {character_id, gift_id, category}
 signal conversation_opened(info: Dictionary)  # {character_id, location}
 signal fact_learned(info: Dictionary)       # {character_id, facts: [trivia ids], source: "talk"|"quiz"}
