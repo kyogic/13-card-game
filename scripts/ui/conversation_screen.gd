@@ -282,8 +282,7 @@ func _on_quiz() -> void:
 		if correct:
 			_say_event("on_trivia_correct", func(): action_taken.emit("quiz"))
 		else:
-			_say_event("on_trivia_wrong", func():
-				_narrate("(The answer was: %s)" % q.answer, func(): action_taken.emit("quiz"))))
+			_say_event("on_trivia_wrong", func(): action_taken.emit("quiz")))  # no answer: learn it by talking
 
 
 func _on_gift() -> void:

@@ -29,6 +29,7 @@ func _init() -> void:
 	calendar.location_picked.connect(_on_location_picked)
 	calendar.wait_pressed.connect(_on_wait)
 	calendar.save_pressed.connect(_on_save)
+	calendar.menu_pressed.connect(_return_to_menu)
 	screens.add_child(calendar)
 	conversation = ConversationScreen.new()
 	conversation.can_afford = func(kind): return Calendar.can_afford(kind)
@@ -37,13 +38,18 @@ func _init() -> void:
 	screens.add_child(conversation)
 	summary = SummaryScreen.new()
 	summary.closed.connect(_on_summary_closed)
+	summary.menu_requested.connect(_return_to_menu)
 	screens.add_child(summary)
 
-	# During a date: her speech bubble (top-left) and affection meter (under her name).
+	# During a date: her speech bubble down by her feet (so it never covers her face),
+	# growing upwards from just above her name, and her affection meter under her name.
 	bubble = ReactionBubble.new()
-	bubble.position = Vector2(14, 10)
-	bubble.custom_minimum_size = Vector2(390, 0)
-	bubble.size = Vector2(390, 0)
+	bubble.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	bubble.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	bubble.offset_left = 14
+	bubble.offset_right = 404
+	bubble.offset_top = -90
+	bubble.offset_bottom = -84
 	add_child(bubble)
 	date_meter = AffectionMeter.new()
 	date_meter.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
@@ -70,6 +76,7 @@ func _ready() -> void:
 func hide_all() -> void:
 	screens.visible = false
 	date_meter.visible = false
+	bubble.dismiss()
 
 
 func start_story() -> void:
@@ -91,6 +98,12 @@ func continue_story() -> void:
 		return
 	calendar.show_message("Welcome back. It's %s." % Calendar.slot_name().to_lower())
 	_show_calendar()
+
+
+## Saves and goes back to the main menu; Continue Story picks up right here.
+func _return_to_menu() -> void:
+	SaveGame.save_game()
+	hide_all()
 
 
 func _on_save() -> void:
@@ -167,6 +180,7 @@ func _on_match_ended(info: Dictionary) -> void:
 func _on_date_closed(info: Dictionary) -> void:
 	GameState.in_date = false
 	date_meter.visible = false
+	bubble.dismiss()
 	if not info.get("completed", true):
 		GameState.log_event("date_left", "Left the date early.")
 	screens.visible = true

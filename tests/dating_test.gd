@@ -257,6 +257,7 @@ func _dialogue_checks() -> void:
 	await process_frame
 	check(not state.in_date and layer.screens.visible and layer.calendar.visible and not convo.visible,
 		"back to the calendar after the date")
+	check(not layer.bubble.visible, "her speech bubble goes away with the date")
 	check(cal.slot_name() == "Afternoon" and state.time_left == 3, "the date used the rest of the morning")
 	await _calendar_checks()
 
@@ -333,9 +334,11 @@ func _calendar_checks() -> void:
 	check(layer.summary.visible and not layer.calendar.visible, "summary shown when the day ends")
 	var text: String = layer.summary.body.text
 	var a: int = affection.value("jessica")
-	check(("Affection: 0 → %d  (+%d)" % [a, a]) in text, "summary: affection gained")
-	check("Stage: Curious  (new!)" in text, "summary: stage reached")
-	check("Boba Date Location" in text and not ("Intro Scene" in text), "summary: only unlocks earned today")
+	check(not ("ffection" in text) and not ("Stage" in text) and not ("Curious" in text) and not (str(a) in text),
+		"summary keeps affection a mystery")
+	check("Unlocked: Boba Date Location" in text and not ("Intro Scene" in text), "summary: only unlocks earned today")
+	check(layer.summary.menu_button.visible and layer.summary.menu_button.text == "Return to main menu",
+		"summary offers a way back to the main menu")
 	check("1 won, 0 lost" in text and "Trivia:  1 of 1 right" in text and "Gifts given: 1" in text,
 		"summary: matches, trivia, gifts")
 	check(layer.summary.title.text == "End of Day 1" and layer.summary.continue_button.text == "Start Day 2",
@@ -391,6 +394,22 @@ func _two_girls_checks() -> void:
 	_choices()[0].pressed.emit()
 	await _drain()
 	check(affection.value("arisa") == 5 and affection.value("jessica") == 0, "affection is per girl")
+	# A wrong quiz answer doesn't give the right one away.
+	convo.buttons.quiz.pressed.emit()
+	await process_frame
+	var question: String = convo.dialogue.text_label.text
+	var q: Dictionary = ari.trivia().filter(func(t): return t.question == question)[0]
+	_choices().filter(func(b): return b.text != q.answer)[0].pressed.emit()
+	var shown := []
+	for i in 30:
+		await process_frame
+		shown.append(convo.dialogue.text_label.text)
+		if not convo.dialogue.is_busy():
+			break
+		convo.dialogue.advance()
+	check(not shown.any(func(t): return q.answer in t), "wrong answer: the right one isn't revealed")
+	check(shown.has(ari.data.dialogue.on_trivia_wrong[0].text if ari.data.dialogue.on_trivia_wrong[0] is Dictionary
+		else ari.data.dialogue.on_trivia_wrong[0]), "she still reacts to the wrong answer")
 	# A date with Arisa: no wardrobe outfits, so her profile portrait.
 	convo.buttons.date.pressed.emit()
 	await _drain()
@@ -399,6 +418,10 @@ func _two_girls_checks() -> void:
 		and main.portrait.texture.resource_path == main._outfit(main.date_outfit).path,
 		"Arisa wears one of her own unlocked outfits to the date")
 	check(main.opponent.tuning.get("two_hold_tendency") == 0.9, "her defensive card AI")
+	var face_bottom: float = main.portrait.get_global_rect().position.y + main.portrait.get_global_rect().size.y * 0.4
+	check(layer.bubble.get_global_rect().position.y > face_bottom
+		and layer.bubble.get_global_rect().end.y <= main.nameplate.get_global_rect().position.y + 1,
+		"her speech bubble sits by her feet, above her name: %s" % [layer.bubble.get_global_rect()])
 
 	# Second Wind: she passed, the round is about to go to you, and she jumps back in.
 	var R = load("res://scripts/rules.gd")
@@ -461,13 +484,21 @@ func _save_load_checks() -> void:
 		layer.calendar.message_label.text, "Continue Day resumes the saved day")
 	layer.calendar.save_pressed.emit()
 	check("saved" in layer.calendar.message_label.text, "manual save")
-	# A finished day continues straight to its summary.
-	cal.next_slot(); cal.next_slot(); cal.next_slot()
-	await process_frame
-	layer.hide_all()
+	# Main menu from the calendar saves first.
+	layer.calendar.menu_pressed.emit()
+	check(not layer.screens.visible and saver.describe().begins_with("Day 1 of 3 · Afternoon"),
+		"calendar 'Main menu' saves and leaves")
 	bus.fire("continue_story_requested")
 	await process_frame
-	check(layer.summary.visible and cal.day_over, "continuing a finished day shows its summary")
+	# A finished day: 'Return to main menu' from its summary, then Continue reopens that summary.
+	cal.next_slot(); cal.next_slot(); cal.next_slot()
+	await process_frame
+	check(layer.summary.visible, "day summary")
+	layer.summary.menu_button.pressed.emit()
+	check(not layer.screens.visible, "summary 'Return to main menu' leaves the story")
+	bus.fire("continue_story_requested")
+	await process_frame
+	check(layer.summary.visible and cal.day_over and state.day == 1, "continuing a finished day shows its summary")
 	saver.delete_save()
 	layer.hide_all()
 
@@ -559,7 +590,7 @@ func _multi_day_checks() -> void:
 	check(cal.story_over() and layer.summary.title.text == "The End"
 		and layer.summary.continue_button.text == "Back to main menu"
 		and "Over the whole story" in layer.summary.body.text
-		and ("Jessica: affection 0 → %d" % aff_before) in layer.summary.body.text, "final summary")
+		and not ("ffection" in layer.summary.body.text) and not layer.summary.menu_button.visible, "final summary")
 	cal.start_next_day()
 	check(state.day == 3, "no Day 4")
 	layer.summary.continue_button.pressed.emit()

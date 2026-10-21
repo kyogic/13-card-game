@@ -9,13 +9,15 @@ A playable prototype of the Vietnamese card game **Tiến Lên** built with **Go
 ## Menus
 - **Story Mode:** the dating sim. Choose **New Story** or **Continue Story**.
 - **Quickplay:** straight into a card game, either 4 players against 3 CPUs, or 2 players against Jessica (best of 3, earns coins).
-- **Wardrobe**, plus the power-up and music toggles, are on the main page. Power-ups apply in both modes.
+- **Wardrobe**, the power-up toggles and a **music volume** slider are on the main page. The volume is saved; 0% pauses the song. Power-ups apply in both modes.
 
 ## Story Mode (dating layer)
 The story lasts **3 days**, each with Morning, Afternoon, Evening and Night.
 - **Carried between days:** affection, unlocks and answered trivia.
 - **Each new morning:** a few more gifts (`daily_gifts` in `data/story.json`).
-- **After each day:** a summary of that day, with a **Start Day N** button.
+- **After each day:** a summary of that day, with **Start Day N** and **Return to main menu** buttons. The summary never shows affection, so how each girl feels stays a mystery. The calendar also has a **Main menu** button. Both menu buttons save first.
+- **Wrong quiz answers:** she doesn't reveal the right answer. You learn it by talking to her.
+- **During a date:** her speech bubble sits down by her feet, so it never covers her face.
 - **After Day 3:** the summary also shows totals for the whole story.
 
 There are two girls to pursue: **Jessica** and **Arisa**. In every part of the day they're in different places, so going to see one means missing the other:

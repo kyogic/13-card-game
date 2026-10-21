@@ -5,6 +5,7 @@ extends Control
 signal location_picked(id: String)
 signal wait_pressed
 signal save_pressed
+signal menu_pressed
 
 const AffectionMeter := preload("res://scripts/ui/affection_meter.gd")
 const Character := preload("res://scripts/character.gd")
@@ -68,6 +69,13 @@ func _init() -> void:
 	save.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	save.pressed.connect(func(): save_pressed.emit())
 	row.add_child(save)
+	var menu := Button.new()
+	menu.text = "Main menu"
+	menu.tooltip_text = "Saves, then returns to the main menu"
+	menu.add_theme_font_size_override("font_size", 16)
+	menu.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	menu.pressed.connect(func(): menu_pressed.emit())
+	row.add_child(menu)
 	col.add_child(row)
 	inventory_label = _label(15, Color(0.75, 0.8, 0.9))
 	inventory_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

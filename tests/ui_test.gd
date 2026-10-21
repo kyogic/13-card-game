@@ -30,6 +30,7 @@ func _run() -> void:
 	check(main.music_player.playing and main.music_player.stream.loop, "background music loops")
 	_timer_unit_checks()
 	_menu_checks()
+	_music_checks()
 	_match_and_wardrobe_checks()
 	_event_checks()
 	_powerup_unit_checks()
@@ -175,6 +176,22 @@ func _event_checks() -> void:
 	for e in recorders:
 		bus.disconnect(e, recorders[e])
 	main._show_menu()
+
+
+func _music_checks() -> void:
+	check(main.music_slider != null and main.music_slider.value == main.music_volume * 100, "volume slider")
+	main.music_slider.value = 0
+	check(main.music_volume == 0.0 and main.music_player.stream_paused and main.music_value_label.text == "0%",
+		"volume 0 pauses the music")
+	main.music_slider.value = 80
+	check(is_equal_approx(main.music_volume, 0.8) and not main.music_player.stream_paused
+		and absf(main.music_player.volume_db - linear_to_db(0.8)) < 0.01, "volume 80%")
+	var reloaded = load("res://scenes/main.tscn").instantiate()
+	reloaded.save_path = TEST_SAVE
+	root.add_child(reloaded)
+	check(is_equal_approx(reloaded.music_volume, 0.8), "volume is saved")
+	reloaded.queue_free()
+	main.music_slider.value = 50
 
 
 ## Main menu: Story Mode and Quickplay pages.

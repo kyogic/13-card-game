@@ -1,13 +1,16 @@
 extends Control
-## End-of-day summary: affection gained, stage reached, unlocks earned, match record.
+## End-of-day summary: what happened today (unlocks earned, dates, trivia, talks, gifts).
+## Affection is deliberately not shown here: how she feels stays a mystery.
 
-signal closed
+signal closed                  # "Start Day N" (or, after the last day, back to the menu)
+signal menu_requested          # "Return to main menu" mid-story
 
 const Character := preload("res://scripts/character.gd")
 
 var body: Label
 var title: Label
 var continue_button: Button
+var menu_button: Button
 
 
 func _init() -> void:
@@ -36,25 +39,26 @@ func _init() -> void:
 	continue_button.add_theme_font_size_override("font_size", 22)
 	continue_button.pressed.connect(func(): closed.emit())
 	col.add_child(continue_button)
+	menu_button = Button.new()
+	menu_button.text = "Return to main menu"
+	menu_button.add_theme_font_size_override("font_size", 18)
+	menu_button.pressed.connect(func(): menu_requested.emit())
+	col.add_child(menu_button)
 
 
 ## `final`: the last day of the story, which also shows totals for the whole story.
 func refresh(final := false) -> void:
 	title.text = "The End" if final else "End of Day %d" % GameState.day
 	continue_button.text = "Back to main menu" if final else "Start Day %d" % (GameState.day + 1)
+	menu_button.visible = not final
 	var lines := ["Day %d of %d is over." % [GameState.day, Calendar.days()], ""]
 	for id in Characters.ids():
 		var profile = Characters.profile(id)
 		var st: Dictionary = GameState.char_state(id)
-		var gained: int = st.affection - st.start_affection
 		lines.append("%s" % profile.full_name())
-		lines.append("    Affection: %d → %d  (%+d)" % [st.start_affection, st.affection, gained])
-		var stage: String = profile.stage(st.affection).get("label", "")
-		var start_stage: String = profile.stage(st.start_affection).get("label", "")
-		lines.append("    Stage: %s%s" % [stage, "  (new!)" if stage != start_stage else ""])
 		var earned: Array = st.unlocks.filter(func(u): return not st.start_unlocks.has(u))
-		lines.append("    Unlocks earned: %s" % (", ".join(earned.map(func(u): return Character.pretty(u)))
-			if not earned.is_empty() else "none"))
+		lines.append("    Unlocked: %s" % (", ".join(earned.map(func(u): return Character.pretty(u)))
+			if not earned.is_empty() else "nothing new today"))
 		lines.append("")
 	lines.append("Date matches today:  %d won, %d lost" % [GameState.count_log("match_won"),
 		GameState.count_log("match_lost")])
@@ -64,9 +68,5 @@ func refresh(final := false) -> void:
 	if final:
 		lines.append("")
 		lines.append("Over the whole story")
-		for id in Characters.ids():
-			var st: Dictionary = GameState.char_state(id)
-			lines.append("    %s: affection %d → %d, %s" % [Characters.profile(id).first_name(),
-				st.story_start_affection, st.affection, Characters.profile(id).stage(st.affection).get("label", "")])
 		lines.append("    Date matches: %d won, %d lost" % [GameState.match_record.wins, GameState.match_record.losses])
 	body.text = "\n".join(lines)

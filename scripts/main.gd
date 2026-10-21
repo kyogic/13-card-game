@@ -111,6 +111,9 @@ var powerup_buttons := {}      # key -> Button
 var target_menu: PopupMenu
 var timer_label: Label
 var music_player: AudioStreamPlayer
+var music_volume := 0.5        # 0..1, set by the main-menu slider and saved with progress
+var music_slider: HSlider
+var music_value_label: Label
 var menu_coins_label: Label
 var wardrobe: Control
 var wardrobe_coins_label: Label
@@ -201,14 +204,23 @@ func _build_menu() -> void:
 	var grid_center := CenterContainer.new()
 	grid_center.add_child(grid)
 	main_page.add_child(grid_center)
-	var music_toggle := CheckButton.new()
-	music_toggle.text = "Background music"
-	music_toggle.button_pressed = true
-	music_toggle.add_theme_font_size_override("font_size", 16)
-	music_toggle.toggled.connect(func(on): music_player.stream_paused = not on)
-	var music_center := CenterContainer.new()
-	music_center.add_child(music_toggle)
-	main_page.add_child(music_center)
+	var music_row := HBoxContainer.new()
+	music_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	music_row.add_theme_constant_override("separation", 10)
+	music_row.add_child(_make_label("Music volume", 16, IDLE_COLOR))
+	music_slider = HSlider.new()
+	music_slider.min_value = 0
+	music_slider.max_value = 100
+	music_slider.step = 5
+	music_slider.custom_minimum_size = Vector2(240, 24)
+	music_slider.value = music_volume * 100
+	music_slider.value_changed.connect(func(v): set_music_volume(v / 100.0))
+	music_row.add_child(music_slider)
+	music_value_label = _make_label("", 16, IDLE_COLOR)
+	music_value_label.custom_minimum_size = Vector2(50, 0)
+	music_row.add_child(music_value_label)
+	main_page.add_child(music_row)
+	_apply_music_volume()
 
 	# Story Mode: the dating sim (handled by the dating layer through the EventBus).
 	var story_page := _menu_page(pages, "story")
@@ -507,9 +519,26 @@ func _start_music() -> void:
 	stream.loop = true
 	music_player = AudioStreamPlayer.new()
 	music_player.stream = stream
-	music_player.volume_db = -6.0
 	add_child(music_player)
 	music_player.play()
+	_apply_music_volume()
+
+
+## 0..1; 0 pauses the song. Saved with the rest of the progress.
+func set_music_volume(v: float) -> void:
+	music_volume = clampf(v, 0.0, 1.0)
+	_apply_music_volume()
+	_save_progress()
+
+
+func _apply_music_volume() -> void:
+	if music_player:
+		music_player.volume_db = linear_to_db(maxf(music_volume, 0.001))
+		music_player.stream_paused = music_volume <= 0.0
+	if music_value_label:
+		music_value_label.text = "%d%%" % roundi(music_volume * 100)
+	if music_slider:
+		music_slider.set_value_no_signal(music_volume * 100)
 
 
 func _show_menu() -> void:
@@ -1361,6 +1390,7 @@ func _load_progress() -> void:
 	if cfg.load(save_path) != OK:
 		return
 	coins = cfg.get_value("progress", "coins", 0)
+	music_volume = cfg.get_value("settings", "music_volume", music_volume)
 	unlocked = cfg.get_value("progress", "unlocked", [])
 	# Saves from before the character was named used "abg" ids.
 	unlocked = unlocked.map(func(id): return id.replace("abg", "jessica"))
@@ -1388,6 +1418,7 @@ func _save_progress() -> void:
 	cfg.set_value("progress", "unlocked", unlocked)
 	cfg.set_value("progress", "selected_outfits", selected_outfits)
 	cfg.set_value("progress", "coins_version", COINS_VERSION)
+	cfg.set_value("settings", "music_volume", music_volume)
 	cfg.save(save_path)
 
 

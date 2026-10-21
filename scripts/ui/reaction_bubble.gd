@@ -76,5 +76,12 @@ func show_line(entry: Dictionary) -> void:
 	tween.tween_callback(func(): visible = false)
 
 
+## Hides the bubble right away (e.g. when the date ends).
+func dismiss() -> void:
+	if tween:
+		tween.kill()
+	visible = false
+
+
 func _showing() -> bool:
 	return visible and modulate.a > 0.5
