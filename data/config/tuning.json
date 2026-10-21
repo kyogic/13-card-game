@@ -1,0 +1,31 @@
+{
+  "affection": {
+    "trivia_correct": 7,
+    "trivia_wrong": -3,
+    "talk_good": 5,
+    "talk_neutral": 1,
+    "talk_bad": -4,
+    "match_won": 8,
+    "match_lost": 3,
+    "player_bomb": 2,
+    "two_saved": 3
+  },
+  "time": {
+    "units_per_slot": 3,
+    "talk": 1,
+    "quiz": 1,
+    "gift": 0,
+    "travel_empty": 1
+  },
+  "events": {
+    "two_saved_max_cards": 3
+  },
+  "reactions": {
+    "bubble_seconds": 3.5,
+    "hand_line_chance": 0.5
+  },
+  "ui": {
+    "typewriter_chars_per_second": 45,
+    "popup_seconds": 1.2
+  }
+}

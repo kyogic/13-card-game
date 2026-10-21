@@ -18,6 +18,10 @@ config/features=PackedStringArray("4.3", "GL Compatibility")
 [autoload]
 
 EventBus="*res://scripts/core/event_bus.gd"
+Config="*res://scripts/core/config.gd"
+Characters="*res://scripts/dating/character_db.gd"
+GameState="*res://scripts/core/game_state.gd"
+Affection="*res://scripts/dating/affection_system.gd"
 
 [display]
 

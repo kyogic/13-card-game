@@ -28,6 +28,7 @@ const MATCH_WINS_NEEDED := 2   # 2-player games are best of 3
 const DEFAULT_OPPONENT_PATH := "res://data/characters/jessica.json"
 ## Late-game threshold for the `two_saved` event: you win a round still holding a 2
 ## you were dealt, with at most this many cards left. Fired once per game.
+## Overridden by events.two_saved_max_cards in the tuning config when it's loaded.
 const TWO_SAVED_MAX_CARDS := 3
 const FRAME_2P_LEFT := 430      # 2-player: the table frame starts here; Jessica stands to its left
 ## key -> [button name, description]. Each power-up can be used once per game.
@@ -1324,7 +1325,10 @@ func _emit_hand_result(round_winner: int) -> void:
 	_emit("hand_won")
 	# two_saved: you won this hand while still holding a 2 you were dealt, late in the game.
 	var held := dealt_twos.filter(func(c): return hands[HUMAN].has(c))
-	if not two_saved_fired and not held.is_empty() and hands[HUMAN].size() <= TWO_SAVED_MAX_CARDS:
+	var config := get_node_or_null("/root/Config")
+	var max_cards: int = config.int_value("events.two_saved_max_cards", TWO_SAVED_MAX_CARDS) if config \
+		else TWO_SAVED_MAX_CARDS
+	if not two_saved_fired and not held.is_empty() and hands[HUMAN].size() <= max_cards:
 		two_saved_fired = true
 		_emit("two_saved")
 
